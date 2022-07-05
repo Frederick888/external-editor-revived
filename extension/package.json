@@ -1,0 +1,9 @@
+{
+  "name": "external-editor-revived",
+  "version": "1.0.0",
+  "description": "Edit emails in external editors such as Vim",
+  "main": "background.js",
+  "author": "Frederick Zhang",
+  "license": "GPL-3.0-or-later",
+  "private": false
+}

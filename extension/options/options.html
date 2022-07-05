@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+
+<head>
+  <style type="text/css" media="screen">
+    table td:first-child {
+      width: 20%;
+    }
+
+    #template {
+      width: 100%;
+    }
+
+    #apply-row td {
+      text-align: end;
+    }
+  </style>
+</head>
+
+<body>
+  <table>
+    <tr id="preset-row">
+      <td><label>Preset</label></td>
+      <td>
+        <select name="preset" id="preset">
+          <option value="konsole_nvim">Konsole & Neovim</option>
+          <option value="konsole_vim">Konsole & Vim</option>
+          <option value="kitty_nvim">Kitty & Neovim</option>
+          <option value="kitty_vim">Kitty & Vim</option>
+          <option value="neovide">Neovide</option>
+          <option value="custom">Custom</option>
+        </select>
+      </td>
+    </tr>
+    <tr id="shell-row" style="display: none;">
+      <td><label>Shell</label></td>
+      <td>
+        <select name="shell" id="shell">
+          <option value="sh">sh</option>
+          <option value="bash">bash</option>
+          <option value="ash">ash</option>
+          <option value="dash">dash</option>
+          <option value="dash">zsh</option>
+        </select>
+      </td>
+    </tr>
+    <tr id="template-row">
+      <td>
+        <label for="template">Command template</label>
+      </td>
+      <td>
+        <input name="template" id="template" type="text" disabled />
+      </td>
+    </tr>
+    <tr></tr>
+    <tr id="apply-row">
+      <td>
+      </td>
+      <td>
+        <input name="apply" id="apply" type="button" value="Apply" />
+      </td>
+    </tr>
+  </table>
+  <script src="options.js"></script>
+</body>
