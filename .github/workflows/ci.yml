@@ -1,4 +1,4 @@
-name: Build and Test Native Messaging Host
+name: CI
 
 on:
   pull_request:
@@ -14,7 +14,25 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  extension:
+    name: Pack MailExtension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Zip
+        run: |
+          pushd ./extension
+          zip -r -FS ../external-editor-revived.xpi *
+      - name: Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: thunderbird-extension
+          retention-days: 60
+          path: |
+            external-editor-revived.xpi
+
+  messaging_host:
+    name: Build, lint, and test messaging host
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
     strategy:
