@@ -6,7 +6,7 @@ const port = browser.runtime.connectNative(nativeAppName)
 const receivedPerTab = {}
 
 async function composeActionListener(tab, _info) {
-  const settings = await browser.storage.local.get(['preset', 'shell', 'template'])
+  const settings = await browser.storage.local.get(['preset', 'shell', 'template', 'bypassVersionCheck'])
   if (!settings.preset) {
     await createBasicNotification(
       'no-settings',
@@ -23,6 +23,7 @@ async function composeActionListener(tab, _info) {
       version: manifest.version,
       shell: settings.shell,
       template: settings.template,
+      bypassVersionCheck: !!settings.bypassVersionCheck,
     },
     tab: tab,
     composeDetails: composeDetails,

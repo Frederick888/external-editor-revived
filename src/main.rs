@@ -14,15 +14,23 @@ const TEMPLATE_TEMP_FILE_NAME: &str = "/path/to/temp.eml";
 
 fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Error> {
     if request.configuration.version != env!("CARGO_PKG_VERSION") {
-        return Err(messaging::Error{
-            tab: request.tab.clone(),
-            title: "ExtEditorR version mismatch!".to_owned(),
-            message: format!(
-                "Thunderbird extension is {} while native messaging host is {}. The request has been discarded.",
+        if request.configuration.bypass_version_check {
+            eprintln!(
+                "Bypassing version check: Thunderbird extension is {} while native messaging host is {}.",
                 request.configuration.version,
                 env!("CARGO_PKG_VERSION")
-            ),
-        });
+            );
+        } else {
+            return Err(messaging::Error{
+                tab: request.tab.clone(),
+                title: "ExtEditorR version mismatch!".to_owned(),
+                message: format!(
+                    "Thunderbird extension is {} while native messaging host is {}. The request has been discarded.",
+                    request.configuration.version,
+                    env!("CARGO_PKG_VERSION")
+                ),
+            });
+        }
     }
 
     {

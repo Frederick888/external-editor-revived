@@ -7,6 +7,7 @@ use super::thunderbird::*;
 pub const MAX_BODY_LENGTH: usize = 768 * 1024;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Configuration {
     pub version: String,
     #[serde(default)]
@@ -17,8 +18,10 @@ pub struct Configuration {
     pub shell: String,
     #[serde(skip_serializing)]
     pub template: String,
-    #[serde(rename = "sendOnSave", default)]
+    #[serde(default)]
     pub send_on_save: bool,
+    #[serde(default)]
+    pub bypass_version_check: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -269,6 +272,7 @@ mod tests {
                 shell: "".to_owned(),
                 template: "".to_owned(),
                 send_on_save: false,
+                bypass_version_check: false,
             },
             tab: Tab {
                 id: 0,

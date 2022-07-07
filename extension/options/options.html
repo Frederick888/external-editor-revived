@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 
 <head>
+  <meta http-equiv="content-type" content="text/html;charset=UTF-8">
   <style type="text/css" media="screen">
     table td:first-child {
       width: 20%;
@@ -22,10 +23,10 @@
       <td><label>Preset</label></td>
       <td>
         <select name="preset" id="preset">
-          <option value="konsole_nvim">Konsole & Neovim</option>
-          <option value="konsole_vim">Konsole & Vim</option>
-          <option value="kitty_nvim">Kitty & Neovim</option>
-          <option value="kitty_vim">Kitty & Vim</option>
+          <option value="konsole_nvim">Konsole &amp; Neovim</option>
+          <option value="konsole_vim">Konsole &amp; Vim</option>
+          <option value="kitty_nvim">Kitty &amp; Neovim</option>
+          <option value="kitty_vim">Kitty &amp; Vim</option>
           <option value="neovide">Neovide</option>
           <option value="custom">Custom</option>
         </select>
@@ -49,6 +50,18 @@
       </td>
       <td>
         <input name="template" id="template" type="text" disabled />
+      </td>
+    </tr>
+    <tr id="bypass-version-check-row">
+      <td>
+        Bypass version check
+      </td>
+      <td>
+        <input type="checkbox" name="bypass-version-check" id="bypass-version-check" />
+        <label for="bypass-version-check">
+          <strong><i>Dangerous!</i></strong>
+          &nbsp;Allow using a messaging host with a different version, which can cause data loss!
+        </label>
       </td>
     </tr>
     <tr></tr>
