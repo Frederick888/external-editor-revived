@@ -107,8 +107,15 @@ fn main() -> anyhow::Result<()> {
                     native_app_manifest.name
                 );
                 eprintln!(
-                    "Consult https://wiki.mozilla.org/WebExtensions/Native_Messaging for its location.\n"
+                    "Consult https://wiki.mozilla.org/WebExtensions/Native_Messaging for its location."
                 );
+                if cfg!(target_os = "macos") {
+                    eprintln!(
+                        "Under macOS this is usually ~/Library/Mozilla/NativeMessagingHosts/{}.json.",
+                        native_app_manifest.name
+                    );
+                }
+                eprintln!();
                 println!("{}", serde_json::to_string_pretty(&native_app_manifest)?);
             }
             Err(e) => eprint!("Failed to determine program path: {}", e),
