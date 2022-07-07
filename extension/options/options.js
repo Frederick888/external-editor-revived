@@ -1,21 +1,54 @@
-const presetSelect = document.getElementById('preset')
+class Editor {
+  constructor(command, gui) {
+    this.command = command
+    this.gui = gui
+  }
+}
+const editors = {
+  'nvim': new Editor('nvim', false),
+  'vim': new Editor('vim', false),
+  'emacs': new Editor('emacs', true),
+  'kak': new Editor('kak', false),
+  'neovide': new Editor('neovide --nofork', true),
+  'gvim': new Editor('gvim --nofork', true),
+}
+const homebrewDefaultDir = '/usr/local/bin/'
+
+const editorSelect = document.getElementById('editor')
+const terminalRow = document.getElementById('terminal-row')
+const terminalSelect = document.getElementById('terminal')
 const shellRow = document.getElementById('shell-row')
 const shellSelect = document.getElementById('shell')
 const templateInput = document.getElementById('template')
 const bypassVersionCheckInput = document.getElementById('bypass-version-check')
-presetSelect.onchange = (e) => {
-  const preset = e.target.value;
-  if (preset === 'custom') {
-    shellRow.style = ''
+const applyButton = document.getElementById('apply')
+
+function updateOptionsForEditor(editor) {
+  if (editor === 'custom') {
+    showElement(shellRow)
     templateInput.removeAttribute('disabled')
+    hideElement(terminalRow)
   } else {
-    shellRow.style = 'display: none;'
+    hideElement(shellRow)
     templateInput.setAttribute('disabled', 'true')
+    const editorConfig = editors[editor]
+    if (editorConfig.gui) {
+      hideElement(terminalRow)
+    } else {
+      showElement(terminalRow)
+    }
   }
-  updateTemplate()
 }
 
-const applyButton = document.getElementById('apply')
+editorSelect.onchange = async (e) => {
+  const editor = e.target.value
+  updateOptionsForEditor(editor)
+  await updateTemplate()
+}
+terminalSelect.onchange = async () => {
+  await updateTemplate()
+}
+
 let applyButtonCountdown = null
 applyButton.onclick = async () => {
   if (applyButtonCountdown !== null) {
@@ -30,42 +63,53 @@ applyButton.onclick = async () => {
   await saveSettings()
 }
 
-function updateTemplate() {
-  const preset = presetSelect.value
-  if (preset === 'custom') {
+function hideElement(element) {
+  element.style = 'display: none;'
+}
+
+function showElement(element) {
+  element.style = ''
+}
+
+const templateTempFileName = '"/path/to/temp.eml"'
+async function updateTemplate() {
+  const editor = editorSelect.value
+  if (editor === 'custom') {
     return
   }
-  let template
-  switch (preset) {
-    case 'konsole_nvim':
-      template = 'konsole -e nvim -- "/path/to/temp.eml"'
-      break;
-    case 'konsole_vim':
-      template = 'konsole -e vim -- "/path/to/temp.eml"'
-      break;
-    case 'kitty_nvim':
-      template = 'kitty --start-as=normal -- nvim "/path/to/temp.eml"'
-      break;
-    case 'kitty_vim':
-      template = 'kitty --start-as=normal -- vim "/path/to/temp.eml"'
-      break;
-    case 'neovide':
-      template = 'neovide --nofork "/path/to/temp.eml"'
-      break;
-    default:
-      template = 'konsole -e nvim -- "/path/to/temp.eml"'
-      break;
+
+  const platform = await browser.runtime.getPlatformInfo()
+  const editorConfig = editors[editor]
+  const editorCommand = platform.os === browser.runtime.PlatformOs.MAC ? homebrewDefaultDir + editorConfig.command : editorConfig.command
+  if (editorConfig.gui) {
+    templateInput.value = editorCommand + " " + templateTempFileName
+    return
   }
-  templateInput.value = template
+
+  let terminalCommand = platform.os === browser.runtime.PlatformOs.MAC ? homebrewDefaultDir : ''
+  switch (terminalSelect.value) {
+    case 'kitty':
+      terminalCommand += 'kitty --start-as=normal --'
+      break
+    case 'alacritty':
+      terminalCommand += 'alacritty -e'
+      break
+    case 'konsole':
+      terminalCommand += 'konsole -e'
+      break
+  }
+  templateInput.value = terminalCommand + " " + editorConfig.command + " " + templateTempFileName
 }
 
 async function saveSettings() {
-  const preset = presetSelect.value
-  const shell = preset === 'custom' ? shellSelect.value : 'sh'
+  const editor = editorSelect.value
+  const terminal = terminalSelect.value
+  const shell = editor === 'custom' ? shellSelect.value : 'sh'
   const template = templateInput.value
   const bypassVersionCheck = bypassVersionCheckInput.checked
   await browser.storage.local.set({
-    preset: preset,
+    editor: editor,
+    terminal: terminal,
     shell: shell,
     template: template,
     bypassVersionCheck: bypassVersionCheck,
@@ -73,18 +117,16 @@ async function saveSettings() {
 }
 
 async function loadSettings() {
-  const settings = await browser.storage.local.get(['preset', 'shell', 'template', 'bypassVersionCheck'])
-  if (settings.preset) {
-    presetSelect.value = settings.preset
+  const settings = await browser.storage.local.get(['editor', 'terminal', 'shell', 'template', 'bypassVersionCheck'])
+  if (settings.editor) {
+    editorSelect.value = settings.editor
+    terminalSelect.value = settings.terminal
     shellSelect.value = settings.shell
     templateInput.value = settings.template
     bypassVersionCheckInput.checked = settings.bypassVersionCheck
-    if (settings.preset === 'custom') {
-      shellRow.style = ''
-      templateInput.removeAttribute('disabled')
-    }
+    updateOptionsForEditor(settings.editor)
   } else {
-    updateTemplate()
+    await updateTemplate()
   }
 }
 

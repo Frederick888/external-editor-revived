@@ -19,16 +19,27 @@
 
 <body>
   <table>
-    <tr id="preset-row">
-      <td><label>Preset</label></td>
+    <tr id="editor-row">
+      <td><label>Editor</label></td>
       <td>
-        <select name="preset" id="preset">
-          <option value="konsole_nvim">Konsole &amp; Neovim</option>
-          <option value="konsole_vim">Konsole &amp; Vim</option>
-          <option value="kitty_nvim">Kitty &amp; Neovim</option>
-          <option value="kitty_vim">Kitty &amp; Vim</option>
+        <select name="editor" id="editor">
+          <option value="nvim">Neovim</option>
+          <option value="vim">Vim</option>
+          <option value="emacs">Emacs</option>
+          <option value="kak">Kakoune</option>
           <option value="neovide">Neovide</option>
+          <option value="gvim">gVim</option>
           <option value="custom">Custom</option>
+        </select>
+      </td>
+    </tr>
+    <tr id="terminal-row">
+      <td><label>Terminal</label></td>
+      <td>
+        <select name="terminal" id="terminal">
+          <option value="kitty">Kitty</option>
+          <option value="alacritty">Alacritty</option>
+          <option value="konsole">Konsole</option>
         </select>
       </td>
     </tr>
