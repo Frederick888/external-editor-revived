@@ -12,6 +12,7 @@ const editors = {
   'neovide': new Editor('neovide --nofork', true),
   'gvim': new Editor('gvim --nofork', true),
 }
+const homebrewDefaultDir = '/usr/local/bin/'
 
 const editorSelect = document.getElementById('editor')
 const terminalRow = document.getElementById('terminal-row')
@@ -39,12 +40,13 @@ function updateOptionsForEditor(editor) {
   }
 }
 
-editorSelect.onchange = (e) => {
+editorSelect.onchange = async (e) => {
   const editor = e.target.value
   updateOptionsForEditor(editor)
-  updateTemplate()
-terminalSelect.onchange = () => {
-  updateTemplate()
+  await updateTemplate()
+}
+terminalSelect.onchange = async () => {
+  await updateTemplate()
 }
 
 let applyButtonCountdown = null
@@ -70,28 +72,30 @@ function showElement(element) {
 }
 
 const templateTempFileName = '"/path/to/temp.eml"'
-function updateTemplate() {
+async function updateTemplate() {
   const editor = editorSelect.value
   if (editor === 'custom') {
     return
   }
 
+  const platform = await browser.runtime.getPlatformInfo()
   const editorConfig = editors[editor]
+  const editorCommand = platform.os === browser.runtime.PlatformOs.MAC ? homebrewDefaultDir + editorConfig.command : editorConfig.command
   if (editorConfig.gui) {
-    templateInput.value = editorConfig.command + " " + templateTempFileName
+    templateInput.value = editorCommand + " " + templateTempFileName
     return
   }
 
-  let terminalCommand
+  let terminalCommand = platform.os === browser.runtime.PlatformOs.MAC ? homebrewDefaultDir : ''
   switch (terminalSelect.value) {
-    case 'konsole':
-      terminalCommand = 'konsole -e'
-      break
     case 'kitty':
-      terminalCommand = 'kitty --start-as=normal --'
+      terminalCommand += 'kitty --start-as=normal --'
       break
     case 'alacritty':
-      terminalCommand = 'alacritty -e'
+      terminalCommand += 'alacritty -e'
+      break
+    case 'konsole':
+      terminalCommand += 'konsole -e'
       break
   }
   templateInput.value = terminalCommand + " " + editorConfig.command + " " + templateTempFileName
@@ -122,7 +126,7 @@ async function loadSettings() {
     bypassVersionCheckInput.checked = settings.bypassVersionCheck
     updateOptionsForEditor(settings.editor)
   } else {
-    updateTemplate()
+    await updateTemplate()
   }
 }
 
