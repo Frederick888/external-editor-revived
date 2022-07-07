@@ -6,12 +6,13 @@ use model::messaging::{self, Exchange};
 use std::env;
 use std::fs;
 use std::io;
+use std::path::Path;
 use std::process;
 use std::thread;
 
 const TEMPLATE_TEMP_FILE_NAME: &str = "/path/to/temp.eml";
 
-fn handle(request: Exchange) -> Result<(), messaging::Error> {
+fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Error> {
     if request.configuration.version != env!("CARGO_PKG_VERSION") {
         return Err(messaging::Error{
             tab: request.tab.clone(),
@@ -24,7 +25,6 @@ fn handle(request: Exchange) -> Result<(), messaging::Error> {
         });
     }
 
-    let temp_filename = util::get_temp_filename(&request.tab);
     {
         let mut temp_file = fs::File::create(&temp_filename).map_err(|e| messaging::Error {
             tab: request.tab.clone(),
@@ -57,7 +57,7 @@ fn handle(request: Exchange) -> Result<(), messaging::Error> {
     proc.wait().map_err(|e| messaging::Error {
         tab: request.tab.clone(),
         title: "ExtEditorR encountered error from external editor".to_owned(),
-        message: e.to_string(),
+        message: util::error_message_with_path(e, temp_filename),
     })?;
 
     let mut response = request;
@@ -66,7 +66,7 @@ fn handle(request: Exchange) -> Result<(), messaging::Error> {
         let temp_file = fs::File::open(&temp_filename).map_err(|e| messaging::Error {
             tab: response.tab.clone(),
             title: "ExtEditorR failed to read from temporary file".to_owned(),
-            message: e.to_string(),
+            message: util::error_message_with_path(e, temp_filename),
         })?;
 
         let mut reader = io::BufReader::new(temp_file);
@@ -75,7 +75,7 @@ fn handle(request: Exchange) -> Result<(), messaging::Error> {
             .map_err(|e| messaging::Error {
                 tab: response.tab.clone(),
                 title: "ExtEditorR failed to process temporary file".to_owned(),
-                message: e.to_string(),
+                message: util::error_message_with_path(e, temp_filename),
             })?;
 
         for response in responses {
@@ -110,13 +110,20 @@ fn main() -> anyhow::Result<()> {
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
 
         thread::spawn(move || {
-            if let Err(e) = handle(request) {
+            let temp_filename = util::get_temp_filename(&request.tab);
+            if let Err(e) = handle(request, &temp_filename) {
                 if let Err(write_error) = web_ext_native_messaging::write_message(&e) {
                     eprint!(
                         "ExtEditorR failed to send response to Thunderbird: {}",
                         write_error
                     );
                 }
+            } else if let Err(remove_error) = fs::remove_file(&temp_filename) {
+                eprint!(
+                    "ExtEditorR failed to remove temporary file {}: {}",
+                    temp_filename.to_string_lossy(),
+                    remove_error
+                );
             }
         });
     }
