@@ -52,21 +52,25 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
         .configuration
         .template
         .replace(TEMPLATE_TEMP_FILE_NAME, &temp_filename.to_string_lossy());
-    let mut proc = process::Command::new(&request.configuration.shell)
+    let output = process::Command::new(&request.configuration.shell)
         .arg("-c")
         .arg(command)
-        .spawn()
+        .output()
         .map_err(|e| messaging::Error {
             tab: request.tab.clone(),
             title: "ExtEditorR failed to start editor".to_owned(),
             message: e.to_string(),
         })?;
-
-    proc.wait().map_err(|e| messaging::Error {
-        tab: request.tab.clone(),
-        title: "ExtEditorR encountered error from external editor".to_owned(),
-        message: util::error_message_with_path(e, temp_filename),
-    })?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr)
+            .trim_end()
+            .to_string();
+        return Err(messaging::Error {
+            tab: request.tab,
+            title: "ExtEditorR encountered error from external editor".to_owned(),
+            message: util::error_message_with_path(stderr, temp_filename),
+        });
+    }
 
     let mut response = request;
 
