@@ -2,6 +2,7 @@ const presetSelect = document.getElementById('preset')
 const shellRow = document.getElementById('shell-row')
 const shellSelect = document.getElementById('shell')
 const templateInput = document.getElementById('template')
+const bypassVersionCheckInput = document.getElementById('bypass-version-check')
 presetSelect.onchange = (e) => {
   const preset = e.target.value;
   if (preset === 'custom') {
@@ -62,19 +63,22 @@ async function saveSettings() {
   const preset = presetSelect.value
   const shell = preset === 'custom' ? shellSelect.value : 'sh'
   const template = templateInput.value
+  const bypassVersionCheck = bypassVersionCheckInput.checked
   await browser.storage.local.set({
     preset: preset,
     shell: shell,
     template: template,
+    bypassVersionCheck: bypassVersionCheck,
   })
 }
 
 async function loadSettings() {
-  const settings = await browser.storage.local.get(['preset', 'shell', 'template'])
+  const settings = await browser.storage.local.get(['preset', 'shell', 'template', 'bypassVersionCheck'])
   if (settings.preset) {
     presetSelect.value = settings.preset
     shellSelect.value = settings.shell
     templateInput.value = settings.template
+    bypassVersionCheckInput.checked = settings.bypassVersionCheck
     if (settings.preset === 'custom') {
       shellRow.style = ''
       templateInput.removeAttribute('disabled')
