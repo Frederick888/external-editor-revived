@@ -1,0 +1,166 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  create_release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_id: ${{ steps.create_release.outputs.id }}
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: ncipollo/release-action@v1
+        with:
+          draft: true
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  extension:
+    name: Pack and upload MailExtension
+    needs: create_release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Zip
+        run: |
+          pushd ./extension
+          zip -r -FS ../external-editor-revived.xpi *
+      - name: Hash
+        run: |
+          echo "$(sha256sum external-editor-revived.xpi | cut -d ' ' -f 1)" > external-editor-revived.xpi.sha256sum
+          cat external-editor-revived.xpi.sha256sum
+      - name: Upload
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./external-editor-revived.xpi
+          asset_name: external-editor-revived.xpi
+          asset_content_type: application/zip
+      - name: "Upload Hash"
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./external-editor-revived.xpi.sha256sum
+          asset_name: external-editor-revived.xpi.sha256sum
+          asset_content_type: text/plain
+
+  messaging_host:
+    name: Build and upload native messaging host
+    runs-on: ${{ matrix.os }}
+    needs: create_release
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Git Commit Hash
+        id: git_commit
+        run: |
+          echo "::set-output name=hash::$(git rev-parse HEAD)"
+
+      - name: Install Windows Dependencies
+        if: contains(matrix.os, 'windows')
+        run: choco install zip
+      - name: Install Rust Toolchain
+        id: rust_toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          default: true
+          override: true
+          components: rustfmt, clippy
+
+      - name: Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.rustc_hash }}-lock-${{ hashFiles('Cargo.lock') }}-git-${{ steps.git_commit.outputs.hash }}
+          restore-keys: |
+            build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.rustc_hash }}-lock-${{ hashFiles('Cargo.lock') }}-
+            build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.rustc_hash }}-
+            build-${{ runner.os }}-
+
+      - name: rustfmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: -- --check
+      - name: Clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --release
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+
+      - name: Pack
+        id: pack_native_host
+        run: |
+          zip -j "./${{ matrix.os }}-native-messaging-host.zip" target/release/external-editor-revived target/release/external-editor-revived.exe
+          echo "::set-output name=filename::${{ matrix.os }}-native-messaging-host"
+      - name: "Hash (Unix)"
+        if: "!contains(matrix.os, 'windows')"
+        run: |
+          echo "$(sha256sum ${{ steps.pack_native_host.outputs.filename }}.zip | cut -d ' ' -f 1)" > ${{ steps.pack_native_host.outputs.filename }}.zip.sha256sum
+          cat ${{ steps.pack_native_host.outputs.filename }}.zip.sha256sum
+      - name: "Hash (Windows)"
+        if: contains(matrix.os, 'windows')
+        run: |
+          $FileHash=(certutil -hashfile ${{ steps.pack_native_host.outputs.filename }}.zip SHA256 | findstr /v hash | findstr /v SHA).replace(" ", "")
+          echo "$FileHash"
+          echo "$FileHash" > ${{ steps.pack_native_host.outputs.filename }}.zip.sha256sum
+      - name: Upload
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./${{ steps.pack_native_host.outputs.filename }}.zip
+          asset_name: ${{ steps.pack_native_host.outputs.filename }}.zip
+          asset_content_type: application/zip
+      - name: "Upload Hash"
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./${{ steps.pack_native_host.outputs.filename }}.zip.sha256sum
+          asset_name: ${{ steps.pack_native_host.outputs.filename }}.zip.sha256sum
+          asset_content_type: text/plain
+
+  publish_release:
+    runs-on: ubuntu-latest
+    needs: [create_release, extension, messaging_host]
+    steps:
+      - name: Publish Release
+        uses: eregon/publish-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          release_id: ${{ needs.create_release.outputs.release_id }}
