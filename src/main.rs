@@ -97,19 +97,22 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
 }
 
 fn main() -> anyhow::Result<()> {
-    let args: Vec<_> = env::args().collect();
-    if args.len() == 1 {
+    if env::args().count() == 1 {
         // Thunderbird calls us with: /path/to/external-editor-revived /path/to/native-messaging-hosts/external_editor_revived.json external-editor-revived@tsundere.moe
-        let program_path = util::guess_self_path(&args[0])?;
-        let native_app_manifest = AppManifest::new(&program_path.to_string_lossy());
-        eprintln!(
-            "Please create '{}.json' manifest file with the JSON below.",
-            native_app_manifest.name
-        );
-        eprintln!(
-            "Consult https://wiki.mozilla.org/WebExtensions/Native_Messaging for its location.\n"
-        );
-        println!("{}", serde_json::to_string_pretty(&native_app_manifest)?);
+        match env::current_exe() {
+            Ok(program_path) => {
+                let native_app_manifest = AppManifest::new(&program_path.to_string_lossy());
+                eprintln!(
+                    "Please create '{}.json' manifest file with the JSON below.",
+                    native_app_manifest.name
+                );
+                eprintln!(
+                    "Consult https://wiki.mozilla.org/WebExtensions/Native_Messaging for its location.\n"
+                );
+                println!("{}", serde_json::to_string_pretty(&native_app_manifest)?);
+            }
+            Err(e) => eprint!("Failed to determine program path: {}", e),
+        }
         return Ok(());
     }
 
