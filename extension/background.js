@@ -6,8 +6,8 @@ const port = browser.runtime.connectNative(nativeAppName)
 const receivedPerTab = {}
 
 async function composeActionListener(tab, _info) {
-  const settings = await browser.storage.local.get(['preset', 'shell', 'template', 'bypassVersionCheck'])
-  if (!settings.preset) {
+  const settings = await browser.storage.local.get(['editor', 'shell', 'template', 'bypassVersionCheck'])
+  if (!settings.editor) {
     await createBasicNotification(
       'no-settings',
       manifest.short_name + ' needs to be configured first!',
