@@ -3,7 +3,7 @@
     "name": "External Editor Revived",
     "short_name": "ExtEditorR",
     "description": "Edit emails in external editors such as Vim",
-    "homepage_url": "https://git.tsundere.moe/Frederick888/external-editor-revived",
+    "homepage_url": "https://github.com/Frederick888/external-editor-revived",
     "version": "0.1.0",
     "author": "Frederick Zhang",
     "applications": {
