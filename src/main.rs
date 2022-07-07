@@ -134,6 +134,7 @@ fn main() -> anyhow::Result<()> {
         thread::spawn(move || {
             let temp_filename = util::get_temp_filename(&request.tab);
             if let Err(e) = handle(request, &temp_filename) {
+                eprintln!("{}: {}", e.title, e.message);
                 if let Err(write_error) = web_ext_native_messaging::write_message(&e) {
                     eprint!(
                         "ExtEditorR failed to send response to Thunderbird: {}",
