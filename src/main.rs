@@ -102,11 +102,11 @@ fn main() -> anyhow::Result<()> {
         // Thunderbird calls us with: /path/to/external-editor-revived /path/to/native-messaging-hosts/external_editor_revived.json external-editor-revived@tsundere.moe
         let program_path = util::guess_self_path(&args[0])?;
         let native_app_manifest = AppManifest::new(&program_path.to_string_lossy());
-        println!(
+        eprintln!(
             "Please create '{}.json' manifest file with the JSON below.",
             native_app_manifest.name
         );
-        println!(
+        eprintln!(
             "Consult https://wiki.mozilla.org/WebExtensions/Native_Messaging for its location.\n"
         );
         println!("{}", serde_json::to_string_pretty(&native_app_manifest)?);
