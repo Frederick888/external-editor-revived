@@ -49,7 +49,7 @@ impl Exchange {
             self.configuration.send_on_save
         )?;
         writeln!(w)?;
-        writeln!(w, "{}", self.compose_details.plain_text_body)?;
+        writeln!(w, "{}", self.compose_details.get_body())?;
         Ok(())
     }
 
@@ -106,6 +106,7 @@ impl Exchange {
             buf.clear();
         }
         // read body
+        self.compose_details.body.clear();
         self.compose_details.plain_text_body.clear();
         buf.clear();
         r.read_to_string(&mut buf)?;
@@ -113,18 +114,21 @@ impl Exchange {
         for c in buf.chars() {
             chunk.push(c);
             if chunk.len() > max_body_length {
-                self.compose_details.plain_text_body = chunk.clone();
+                self.compose_details.set_body(chunk.clone());
                 compose_details_list.push(self.compose_details.clone());
                 chunk.clear();
             }
         }
-        self.compose_details.plain_text_body = chunk.clone();
+        self.compose_details.set_body(chunk.clone());
         if !chunk.is_empty() || compose_details_list.is_empty() {
             compose_details_list.push(self.compose_details.clone());
         }
         // remove redundant carriage returns / line breaks from last chunk
         if let Some(compose_details) = compose_details_list.last_mut() {
-            compose_details.plain_text_body = compose_details.plain_text_body.trim_end().to_owned();
+            if compose_details.is_plain_text {
+                compose_details.plain_text_body =
+                    compose_details.plain_text_body.trim_end().to_owned();
+            }
         }
 
         let mut responses: Vec<Self> = compose_details_list

@@ -68,11 +68,29 @@ pub struct ComposeDetails {
     pub subject: String,
     #[serde(rename = "isPlainText")]
     pub is_plain_text: bool,
-    #[serde(skip_serializing)]
+    #[serde(skip_serializing_if = "String::is_empty")]
     pub body: String,
-    #[serde(rename = "plainTextBody")]
+    #[serde(rename = "plainTextBody", skip_serializing_if = "String::is_empty")]
     pub plain_text_body: String,
     pub attachments: Vec<ComposeAttachment>,
+}
+
+impl ComposeDetails {
+    pub fn get_body(&self) -> &str {
+        if self.is_plain_text {
+            &self.plain_text_body
+        } else {
+            &self.body
+        }
+    }
+
+    pub fn set_body(&mut self, body: String) {
+        if self.is_plain_text {
+            self.plain_text_body = body;
+        } else {
+            self.body = body;
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
