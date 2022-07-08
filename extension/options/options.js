@@ -18,7 +18,7 @@ const editorSelect = document.getElementById('editor')
 const terminalRow = document.getElementById('terminal-row')
 const terminalSelect = document.getElementById('terminal')
 const shellRow = document.getElementById('shell-row')
-const shellSelect = document.getElementById('shell')
+const shellInput = document.getElementById('shell')
 const templateInput = document.getElementById('template')
 const bypassVersionCheckInput = document.getElementById('bypass-version-check')
 const applyButton = document.getElementById('apply')
@@ -104,7 +104,7 @@ async function updateTemplate() {
 async function saveSettings() {
   const editor = editorSelect.value
   const terminal = terminalSelect.value
-  const shell = editor === 'custom' ? shellSelect.value : 'sh'
+  const shell = editor === 'custom' ? shellInput.value : 'sh'
   const template = templateInput.value
   const bypassVersionCheck = bypassVersionCheckInput.checked
   await browser.storage.local.set({
@@ -121,7 +121,7 @@ async function loadSettings() {
   if (settings.editor) {
     editorSelect.value = settings.editor
     terminalSelect.value = settings.terminal
-    shellSelect.value = settings.shell
+    shellInput.value = settings.shell
     templateInput.value = settings.template
     bypassVersionCheckInput.checked = settings.bypassVersionCheck
     updateOptionsForEditor(settings.editor)
