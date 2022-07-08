@@ -2,6 +2,10 @@
 
 External Editor Revived is a Thunderbird [MailExtension](https://developer.thunderbird.net/add-ons/mailextensions) which allows editing emails in programs such as Vim, Neovim, Emacs and etc.
 
+## Usage
+
+[Wiki](https://github.com/Frederick888/external-editor-revived/wiki).
+
 ## Credits
 
 Inspiration: https://github.com/exteditor/exteditor
