@@ -98,7 +98,7 @@ async function updateTemplate() {
       terminalCommand += 'konsole -e'
       break
   }
-  templateInput.value = terminalCommand + " " + editorConfig.command + " " + templateTempFileName
+  templateInput.value = terminalCommand + " " + editorCommand + " " + templateTempFileName
 }
 
 async function saveSettings() {
