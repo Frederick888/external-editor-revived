@@ -48,10 +48,17 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
             })?;
     }
 
-    let command = request
-        .configuration
-        .template
-        .replace(TEMPLATE_TEMP_FILE_NAME, &temp_filename.to_string_lossy());
+    let command = if cfg!(target_os = "windows") {
+        request.configuration.template.replace(
+            TEMPLATE_TEMP_FILE_NAME,
+            &temp_filename.to_string_lossy().replace('\\', "\\\\"),
+        )
+    } else {
+        request
+            .configuration
+            .template
+            .replace(TEMPLATE_TEMP_FILE_NAME, &temp_filename.to_string_lossy())
+    };
     let output = process::Command::new(&request.configuration.shell)
         .arg("-c")
         .arg(command)
