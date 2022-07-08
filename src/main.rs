@@ -107,31 +107,50 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
     Ok(())
 }
 
+fn print_help() -> anyhow::Result<()> {
+    match env::current_exe() {
+        Ok(program_path) => {
+            let native_app_manifest = AppManifest::new(&program_path.to_string_lossy());
+            eprintln!(
+                "Please create '{}.json' manifest file with the JSON below.",
+                native_app_manifest.name
+            );
+            eprintln!(
+                "Consult https://wiki.mozilla.org/WebExtensions/Native_Messaging for its location."
+            );
+            if cfg!(target_os = "macos") {
+                eprintln!(
+                    "Under macOS this is usually ~/Library/Mozilla/NativeMessagingHosts/{}.json.",
+                    native_app_manifest.name
+                );
+            }
+            eprintln!();
+            println!("{}", serde_json::to_string_pretty(&native_app_manifest)?);
+        }
+        Err(e) => eprint!("Failed to determine program path: {}", e),
+    }
+    Ok(())
+}
+
 fn main() -> anyhow::Result<()> {
     if env::args().count() == 1 {
         // Thunderbird calls us with: /path/to/external-editor-revived /path/to/native-messaging-hosts/external_editor_revived.json external-editor-revived@tsundere.moe
-        match env::current_exe() {
-            Ok(program_path) => {
-                let native_app_manifest = AppManifest::new(&program_path.to_string_lossy());
-                eprintln!(
-                    "Please create '{}.json' manifest file with the JSON below.",
-                    native_app_manifest.name
+        return print_help();
+    }
+    if let Some(arg) = env::args().nth(1) {
+        match arg.as_str() {
+            "-v" | "--version" => {
+                println!(
+                    "External Editor Revived native messaging host v{}",
+                    env!("CARGO_PKG_VERSION")
                 );
-                eprintln!(
-                    "Consult https://wiki.mozilla.org/WebExtensions/Native_Messaging for its location."
-                );
-                if cfg!(target_os = "macos") {
-                    eprintln!(
-                        "Under macOS this is usually ~/Library/Mozilla/NativeMessagingHosts/{}.json.",
-                        native_app_manifest.name
-                    );
-                }
-                eprintln!();
-                println!("{}", serde_json::to_string_pretty(&native_app_manifest)?);
+                return Ok(());
             }
-            Err(e) => eprint!("Failed to determine program path: {}", e),
+            "-h" | "--help" => {
+                return print_help();
+            }
+            _ => {}
         }
-        return Ok(());
     }
 
     loop {
