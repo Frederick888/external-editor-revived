@@ -55,7 +55,7 @@ async function nativeMessagingListener(response) {
         }
       }
       await messenger.compose.setComposeDetails(response.tab.id, composeDetails)
-      if (response.configuration.sendOnSave) {
+      if (response.configuration.sendOnExit) {
         await messenger.compose.sendMessage(response.tab.id)
       }
       delete receivedPerTab[response.tab.id]
