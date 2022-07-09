@@ -47,7 +47,12 @@ async function nativeMessagingListener(response) {
       receivedPerTab[response.tab.id].sort((a, b) => a.configuration.sequence - b.configuration.sequence)
       const composeDetails = receivedPerTab[response.tab.id][0].composeDetails
       for (let i = 1; i < receivedPerTab[response.tab.id].length; i++) {
-        composeDetails.plainTextBody += receivedPerTab[response.tab.id][i].composeDetails.plainTextBody
+        if (typeof composeDetails.plainTextBody === 'string') {
+          composeDetails.plainTextBody += receivedPerTab[response.tab.id][i].composeDetails.plainTextBody
+        }
+        if (typeof composeDetails.body === 'string') {
+          composeDetails.body += receivedPerTab[response.tab.id][i].composeDetails.body
+        }
       }
       await messenger.compose.setComposeDetails(response.tab.id, composeDetails)
       if (response.configuration.sendOnSave) {
