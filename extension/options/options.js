@@ -89,7 +89,7 @@ async function updateTemplate() {
   let terminalCommand = platform.os === browser.runtime.PlatformOs.MAC ? homebrewDefaultDir : ''
   switch (terminalSelect.value) {
     case 'kitty':
-      terminalCommand += 'kitty --start-as=normal --'
+      terminalCommand += 'kitty --start-as=normal --override=macos_quit_when_last_window_closed=yes --'
       break
     case 'alacritty':
       terminalCommand += 'alacritty -e'
