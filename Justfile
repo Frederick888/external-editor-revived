@@ -16,4 +16,26 @@ update:
     @printf 'Running cargo outdated\n'
     cargo outdated -R
 
+release version:
+    set -e
+    @if [[ "{{version}}" == v* ]]; then printf 'Must not have v-prefix\n'; exit 1; fi
+    # changelog
+    clog -F --setversion=v{{version}} -o ./CHANGELOG.md
+    git add ./CHANGELOG.md
+    # host
+    sed 's/^version = ".*"$/version = "{{version}}"/' -i ./Cargo.toml
+    just lint
+    cargo test
+    cargo build
+    git add ./Cargo.toml ./Cargo.lock
+    # extension
+    jq --indent 4 '.version = "{{version}}"' ./extension/manifest.json | sponge ./extension/manifest.json
+    jq '.version = "{{version}}"' ./extension/package.json | sponge ./extension/package.json
+    git add ./extension/manifest.json ./extension/package.json
+    # commit and tag
+    git status
+    git diff --exit-code
+    git commit -m 'chore: Bump version to {{version}}'
+    git tag v{{version}}
+
 # vim: set filetype=just :
