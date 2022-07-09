@@ -11,6 +11,8 @@ use std::process;
 use std::thread;
 
 const TEMPLATE_TEMP_FILE_NAME: &str = "/path/to/temp.eml";
+const DEFAULT_SHELL_ARGS: &[&str] = &["-c"];
+const DEFAULT_SHELL_ARGS_MACOS: &[&str] = &["-i", "-l", "-c"];
 
 fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Error> {
     if request.configuration.version != env!("CARGO_PKG_VERSION") {
@@ -60,7 +62,11 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
             .replace(TEMPLATE_TEMP_FILE_NAME, &temp_filename.to_string_lossy())
     };
     let output = process::Command::new(&request.configuration.shell)
-        .arg("-c")
+        .args(if cfg!(target_os = "macos") {
+            DEFAULT_SHELL_ARGS_MACOS
+        } else {
+            DEFAULT_SHELL_ARGS
+        })
         .arg(command)
         .output()
         .map_err(|e| messaging::Error {
