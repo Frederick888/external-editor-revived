@@ -11,6 +11,14 @@
       width: 100%;
     }
 
+    #upstream-template-row td:last-child {
+      text-align: end;
+    }
+
+    #upstream-template {
+      width: 100%;
+    }
+
     #apply-row td {
       text-align: end;
     }
@@ -55,6 +63,17 @@
       </td>
       <td>
         <input name="template" id="template" type="text" disabled />
+      </td>
+    </tr>
+    <tr id="upstream-template-row" style="display: none;">
+      <td>
+        <label for="upstream-template">Upstream template</label>
+      </td>
+      <td>
+        <input name="upstream-template" id="upstream-template" type="text" disabled />
+        <br />
+        <span>New template available from upstream.</span>
+        <input type="button" name="upstream-template-sync" id="upstream-template-sync" value="Click to sync" />
       </td>
     </tr>
     <tr id="bypass-version-check-row">
