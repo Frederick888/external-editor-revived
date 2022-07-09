@@ -6,6 +6,8 @@ use super::thunderbird::*;
 
 pub const MAX_BODY_LENGTH: usize = 768 * 1024;
 
+const HEADER_SEND_ON_EXIT: &str = "X-ExtEditorR-Send-On-Exit";
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Configuration {
@@ -19,7 +21,7 @@ pub struct Configuration {
     #[serde(skip_serializing)]
     pub template: String,
     #[serde(default)]
-    pub send_on_save: bool,
+    pub send_on_exit: bool,
     #[serde(default)]
     pub bypass_version_check: bool,
 }
@@ -45,8 +47,8 @@ impl Exchange {
         writeln!(w, "Subject: {}", self.compose_details.subject)?;
         writeln!(
             w,
-            "X-ExtEditorR-Send-On-Save: {}",
-            self.configuration.send_on_save
+            "{}: {}",
+            HEADER_SEND_ON_EXIT, self.configuration.send_on_exit
         )?;
         writeln!(w)?;
         writeln!(w, "{}", self.compose_details.get_body())?;
@@ -97,7 +99,7 @@ impl Exchange {
                         ComposeRecipientList::Single(_) => { return Err(anyhow!("ComposeDetails field Reply-To is Single when merging EML back. This shouldn't have happened!")) },
                     },
                     "Subject" => self.compose_details.subject = header_value.to_string(),
-                    "X-ExtEditorR-Send-On-Save" => self.configuration.send_on_save = header_value == "true",
+                    HEADER_SEND_ON_EXIT => self.configuration.send_on_exit = header_value == "true",
                     _ => eprintln!("ExtEditorR encountered unknown header {} when processing temporary file", header_name),
                 }
             } else {
@@ -200,7 +202,7 @@ mod tests {
         assert!(output.contains("Cc: foo@example.com"));
         assert!(output.contains("Cc: bar@example.com"));
         assert!(output.contains(&format!("Subject: {}", request.compose_details.subject)));
-        assert!(output.contains("X-ExtEditorR-Send-On-Save: false"));
+        assert!(output.contains("X-ExtEditorR-Send-On-Exit: false"));
         assert!(output.ends_with(&format!("{}\n", request.compose_details.plain_text_body)));
         assert!(!output.contains(&request.compose_details.body));
     }
@@ -259,12 +261,12 @@ mod tests {
     }
 
     #[test]
-    fn merge_send_on_save_test() {
-        let mut eml = "X-ExtEditorR-Send-On-Save: true\r\n\r\nThis is a test.\r\n".as_bytes();
+    fn merge_send_on_exit_test() {
+        let mut eml = "X-ExtEditorR-Send-On-Exit: true\r\n\r\nThis is a test.\r\n".as_bytes();
         let mut request = get_blank_request();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
-        assert!(responses[0].configuration.send_on_save);
+        assert!(responses[0].configuration.send_on_exit);
     }
 
     fn get_blank_request() -> Exchange {
@@ -275,7 +277,7 @@ mod tests {
                 total: 0,
                 shell: "".to_owned(),
                 template: "".to_owned(),
-                send_on_save: false,
+                send_on_exit: false,
                 bypass_version_check: false,
             },
             tab: Tab {
