@@ -58,7 +58,7 @@ pub struct ComposeDetails {
     pub bcc: ComposeRecipientList,
     #[serde(rename = "type")]
     pub compose_type: ComposeType,
-    #[serde(rename = "relatedMessageId")]
+    #[serde(rename = "relatedMessageId", skip_serializing_if = "Option::is_none")]
     pub related_message_id: Option<i32>,
     #[serde(rename = "replyTo")]
     pub reply_to: ComposeRecipientList,
