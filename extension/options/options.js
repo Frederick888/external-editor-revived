@@ -19,9 +19,9 @@ const terminalRow = document.getElementById('terminal-row')
 const terminalSelect = document.getElementById('terminal')
 const shellRow = document.getElementById('shell-row')
 const shellInput = document.getElementById('shell')
-const templateInput = document.getElementById('template')
+const templateTextArea = document.getElementById('template')
 const upstreamTemplateRow = document.getElementById('upstream-template-row')
-const upstreamTemplateInput = document.getElementById('upstream-template')
+const upstreamTemplateTextArea = document.getElementById('upstream-template')
 const upstreamTemplateSyncButton = document.getElementById('upstream-template-sync')
 const bypassVersionCheckInput = document.getElementById('bypass-version-check')
 const applyButton = document.getElementById('apply')
@@ -32,11 +32,11 @@ async function updateOptionsForEditor(editor) {
   // their current settings
   if (editor === 'custom') {
     showElement(shellRow)
-    templateInput.removeAttribute('disabled')
+    templateTextArea.removeAttribute('disabled')
     hideElement(terminalRow)
   } else {
     hideElement(shellRow)
-    templateInput.setAttribute('disabled', 'true')
+    templateTextArea.setAttribute('disabled', 'true')
     const editorConfig = editors[editor]
     if (editorConfig.gui) {
       hideElement(terminalRow)
@@ -44,7 +44,7 @@ async function updateOptionsForEditor(editor) {
       showElement(terminalRow)
     }
     await updateUpstreamTemplate()
-    if (templateInput.value !== upstreamTemplateInput.value) {
+    if (templateTextArea.value !== upstreamTemplateTextArea.value) {
       showElement(upstreamTemplateRow)
     } else {
       hideElement(upstreamTemplateRow)
@@ -64,7 +64,7 @@ terminalSelect.onchange = async () => {
 }
 
 upstreamTemplateSyncButton.onclick = async () => {
-  templateInput.value = upstreamTemplateInput.value
+  templateTextArea.value = upstreamTemplateTextArea.value
   hideElement(upstreamTemplateRow)
 }
 
@@ -119,17 +119,17 @@ async function generateTemplate() {
   return terminalCommand + " " + editorCommand + " " + templateTempFileName
 }
 async function updateTemplate() {
-  templateInput.value = await generateTemplate()
+  templateTextArea.value = await generateTemplate()
 }
 async function updateUpstreamTemplate() {
-  upstreamTemplateInput.value = await generateTemplate()
+  upstreamTemplateTextArea.value = await generateTemplate()
 }
 
 async function saveSettings() {
   const editor = editorSelect.value
   const terminal = terminalSelect.value
   const shell = editor === 'custom' ? shellInput.value : 'sh'
-  const template = templateInput.value
+  const template = templateTextArea.value
   const bypassVersionCheck = bypassVersionCheckInput.checked
   await browser.storage.local.set({
     editor: editor,
@@ -146,7 +146,7 @@ async function loadSettings() {
     editorSelect.value = settings.editor
     terminalSelect.value = settings.terminal
     shellInput.value = settings.shell
-    templateInput.value = settings.template
+    templateTextArea.value = settings.template
     bypassVersionCheckInput.checked = settings.bypassVersionCheck
     await updateOptionsForEditor(settings.editor)
   } else {

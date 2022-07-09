@@ -9,10 +9,14 @@
 
     #template {
       width: 100%;
+      word-wrap: break-word;
+      word-break: break-all;
     }
 
     #upstream-template-row td:last-child {
       text-align: end;
+      word-wrap: break-word;
+      word-break: break-all;
     }
 
     #upstream-template {
@@ -62,7 +66,7 @@
         <label for="template">Command template</label>
       </td>
       <td>
-        <input name="template" id="template" type="text" disabled />
+        <textarea name="template" id="template" disabled></textarea>
       </td>
     </tr>
     <tr id="upstream-template-row" style="display: none;">
@@ -70,7 +74,7 @@
         <label for="upstream-template">Upstream template</label>
       </td>
       <td>
-        <input name="upstream-template" id="upstream-template" type="text" disabled />
+        <textarea name="upstream-template" id="upstream-template" disabled></textarea>
         <br />
         <span>New template available from upstream.</span>
         <input type="button" name="upstream-template-sync" id="upstream-template-sync" value="Click to sync" />
