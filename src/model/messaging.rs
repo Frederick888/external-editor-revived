@@ -8,6 +8,8 @@ pub const MAX_BODY_LENGTH: usize = 768 * 1024;
 
 const HEADER_SEND_ON_EXIT: &str = "X-ExtEditorR-Send-On-Exit";
 const HEADER_LOWER_SEND_ON_EXIT: &str = "x-exteditorr-send-on-exit"; // cspell: disable-line
+const HEADER_HELP: &str = "X-ExtEditorR-Help";
+const HEADER_LOWER_HELP: &str = "x-exteditorr-help"; // cspell: disable-line
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,6 +25,8 @@ pub struct Configuration {
     pub template: String,
     #[serde(default)]
     pub send_on_exit: bool,
+    #[serde(default)]
+    pub suppress_help_headers: bool,
     #[serde(default)]
     pub bypass_version_check: bool,
 }
@@ -41,16 +45,47 @@ impl Exchange {
         W: io::Write,
     {
         writeln!(w, "From: {}", self.compose_details.from.to_header_value()?)?;
+        if !self.configuration.suppress_help_headers {
+            writeln!(
+                w,
+                "{}: You can add or delete To/Cc/Bcc/Reply-To headers",
+                HEADER_HELP
+            )?;
+            writeln!(
+                w,
+                "{}: One header line can only have one email/contact/mailing list",
+                HEADER_HELP
+            )?;
+            writeln!(
+                w,
+                "{}: You can though, for example, have two From: header lines if there are two recipients",
+                HEADER_HELP
+            )?;
+        }
         Self::compose_recipient_list_to_eml(w, "To", &self.compose_details.to)?;
         Self::compose_recipient_list_to_eml(w, "Cc", &self.compose_details.cc)?;
         Self::compose_recipient_list_to_eml(w, "Bcc", &self.compose_details.bcc)?;
         Self::compose_recipient_list_to_eml(w, "Reply-To", &self.compose_details.reply_to)?;
         writeln!(w, "Subject: {}", self.compose_details.subject)?;
+        if !self.configuration.suppress_help_headers {
+            writeln!(
+                w,
+                "{}: If you update header below to {}: true, ExtEditorR will try sending out this email immediately after the editor exits",
+                HEADER_HELP, HEADER_SEND_ON_EXIT
+            )?;
+        }
         writeln!(
             w,
             "{}: {}",
             HEADER_SEND_ON_EXIT, self.configuration.send_on_exit
         )?;
+        if !self.configuration.suppress_help_headers {
+            writeln!(
+                w,
+                "{}: Do NOT remove the blank line below separating headers from main body",
+                HEADER_HELP
+            )?;
+        }
         writeln!(w)?;
         writeln!(w, "{}", self.compose_details.get_body())?;
         Ok(())
@@ -101,6 +136,7 @@ impl Exchange {
                     },
                     "subject" => self.compose_details.subject = header_value.to_string(),
                     HEADER_LOWER_SEND_ON_EXIT => self.configuration.send_on_exit = header_value == "true",
+                    HEADER_LOWER_HELP => {},
                     _ => eprintln!("ExtEditorR encountered unknown header {} when processing temporary file", header_name),
                 }
             } else {
@@ -292,6 +328,23 @@ mod tests {
         assert!(responses[0].configuration.send_on_exit);
     }
 
+    #[test]
+    fn help_headers_test() {
+        let mut request = get_blank_request();
+        let mut buf = Vec::new();
+        let result = request.to_eml(&mut buf);
+        assert!(result.is_ok());
+        let output = String::from_utf8(buf).unwrap();
+        assert!(output.contains("X-ExtEditorR-Help"));
+
+        request.configuration.suppress_help_headers = true;
+        let mut buf = Vec::new();
+        let result = request.to_eml(&mut buf);
+        assert!(result.is_ok());
+        let output = String::from_utf8(buf).unwrap();
+        assert!(!output.contains("X-ExtEditorR-Help"));
+    }
+
     fn get_blank_request() -> Exchange {
         Exchange {
             configuration: Configuration {
@@ -301,6 +354,7 @@ mod tests {
                 shell: "".to_owned(),
                 template: "".to_owned(),
                 send_on_exit: false,
+                suppress_help_headers: false,
                 bypass_version_check: false,
             },
             tab: Tab {
