@@ -7,6 +7,7 @@ use super::thunderbird::*;
 pub const MAX_BODY_LENGTH: usize = 768 * 1024;
 
 const HEADER_SEND_ON_EXIT: &str = "X-ExtEditorR-Send-On-Exit";
+const HEADER_LOWER_SEND_ON_EXIT: &str = "x-exteditorr-send-on-exit"; // cspell: disable-line
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -78,28 +79,28 @@ impl Exchange {
                 break;
             }
             if let Some((header_name, header_value)) = line.split_once(':') {
-                let header_name = header_name.trim();
+                let header_name = header_name.trim().to_lowercase();
                 let header_value = header_value.trim();
-                match header_name {
-                    "From" => self.compose_details.from = ComposeRecipient::from_header_value(header_value)?,
-                    "To" => match &mut self.compose_details.to {
+                match header_name.as_str() {
+                    "from" => self.compose_details.from = ComposeRecipient::from_header_value(header_value)?,
+                    "to" => match &mut self.compose_details.to {
                         ComposeRecipientList::Multiple(recipients) => recipients.push(ComposeRecipient::from_header_value(header_value)?),
                         ComposeRecipientList::Single(_) => { return Err(anyhow!("ComposeDetails field To is Single when merging EML back. This shouldn't have happened!")) },
                     },
-                    "Cc" => match &mut self.compose_details.cc {
+                    "cc" => match &mut self.compose_details.cc {
                         ComposeRecipientList::Multiple(recipients) => recipients.push(ComposeRecipient::from_header_value(header_value)?),
                         ComposeRecipientList::Single(_) => { return Err(anyhow!("ComposeDetails field Cc is Single when merging EML back. This shouldn't have happened!")) },
                     },
-                    "Bcc" => match &mut self.compose_details.bcc {
+                    "bcc" => match &mut self.compose_details.bcc {
                         ComposeRecipientList::Multiple(recipients) => recipients.push(ComposeRecipient::from_header_value(header_value)?),
                         ComposeRecipientList::Single(_) => { return Err(anyhow!("ComposeDetails field Bcc is Single when merging EML back. This shouldn't have happened!")) },
                     },
-                    "Reply-To" => match &mut self.compose_details.reply_to {
+                    "reply-to" => match &mut self.compose_details.reply_to {
                         ComposeRecipientList::Multiple(recipients) => recipients.push(ComposeRecipient::from_header_value(header_value)?),
                         ComposeRecipientList::Single(_) => { return Err(anyhow!("ComposeDetails field Reply-To is Single when merging EML back. This shouldn't have happened!")) },
                     },
-                    "Subject" => self.compose_details.subject = header_value.to_string(),
-                    HEADER_SEND_ON_EXIT => self.configuration.send_on_exit = header_value == "true",
+                    "subject" => self.compose_details.subject = header_value.to_string(),
+                    HEADER_LOWER_SEND_ON_EXIT => self.configuration.send_on_exit = header_value == "true",
                     _ => eprintln!("ExtEditorR encountered unknown header {} when processing temporary file", header_name),
                 }
             } else {
@@ -223,6 +224,28 @@ mod tests {
     #[test]
     fn merge_from_and_to_test() {
         let mut eml = "From: foo@example.com\r\nTo: foo@instance.com\r\nTo: {\"id\":\"bar\",\"type\":\"mailingList\"}\r\n\r\nThis is a test.\r\n".as_bytes();
+        let mut request = get_blank_request();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(
+            ComposeRecipient::Email("foo@example.com".to_owned()),
+            responses[0].compose_details.from
+        );
+        assert_eq!(
+            ComposeRecipientList::Multiple(vec![
+                ComposeRecipient::Email("foo@instance.com".to_owned()),
+                ComposeRecipient::Node(ComposeRecipientNode {
+                    id: "bar".to_owned(),
+                    node_type: ComposeRecipientNodeType::MailingList
+                }),
+            ]),
+            responses[0].compose_details.to
+        );
+    }
+
+    #[test]
+    fn merge_from_and_to_lower_cases_test() {
+        let mut eml = "from: foo@example.com\r\nto: foo@instance.com\r\nTo: {\"id\":\"bar\",\"type\":\"mailingList\"}\r\n\r\nThis is a test.\r\n".as_bytes();
         let mut request = get_blank_request();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
