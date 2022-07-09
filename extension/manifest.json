@@ -47,6 +47,14 @@
             "512": "assets/icon-512.png"
         }
     },
+    "commands": {
+        "_execute_compose_action": {
+            "suggested_key": {
+                "default": "Ctrl+E"
+            },
+            "description": "Edit in external editor"
+        }
+    },
     "permissions": [
         "compose",
         "compose.send",
