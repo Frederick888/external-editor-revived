@@ -19,34 +19,53 @@ const terminalRow = document.getElementById('terminal-row')
 const terminalSelect = document.getElementById('terminal')
 const shellRow = document.getElementById('shell-row')
 const shellInput = document.getElementById('shell')
-const templateInput = document.getElementById('template')
+const templateTextArea = document.getElementById('template')
+const upstreamTemplateRow = document.getElementById('upstream-template-row')
+const upstreamTemplateTextArea = document.getElementById('upstream-template')
+const upstreamTemplateSyncButton = document.getElementById('upstream-template-sync')
 const bypassVersionCheckInput = document.getElementById('bypass-version-check')
 const applyButton = document.getElementById('apply')
 
-function updateOptionsForEditor(editor) {
+async function updateOptionsForEditor(editor) {
+  // don't touch any values except for upstream template here, since this
+  // function also gets called from loadSettings() and we want to show users
+  // their current settings
   if (editor === 'custom') {
     showElement(shellRow)
-    templateInput.removeAttribute('disabled')
+    templateTextArea.removeAttribute('disabled')
     hideElement(terminalRow)
   } else {
     hideElement(shellRow)
-    templateInput.setAttribute('disabled', 'true')
+    templateTextArea.setAttribute('disabled', 'true')
     const editorConfig = editors[editor]
     if (editorConfig.gui) {
       hideElement(terminalRow)
     } else {
       showElement(terminalRow)
     }
+    await updateUpstreamTemplate()
+    if (templateTextArea.value !== upstreamTemplateTextArea.value) {
+      showElement(upstreamTemplateRow)
+    } else {
+      hideElement(upstreamTemplateRow)
+    }
   }
 }
 
 editorSelect.onchange = async (e) => {
   const editor = e.target.value
-  updateOptionsForEditor(editor)
   await updateTemplate()
+  await updateOptionsForEditor(editor)
 }
 terminalSelect.onchange = async () => {
+  const editor = editorSelect.value
   await updateTemplate()
+  await updateOptionsForEditor(editor)
+}
+
+upstreamTemplateSyncButton.onclick = async () => {
+  templateTextArea.value = upstreamTemplateTextArea.value
+  hideElement(upstreamTemplateRow)
 }
 
 let applyButtonCountdown = null
@@ -72,24 +91,23 @@ function showElement(element) {
 }
 
 const templateTempFileName = '"/path/to/temp.eml"'
-async function updateTemplate() {
+async function generateTemplate() {
   const editor = editorSelect.value
   if (editor === 'custom') {
-    return
+    return null
   }
 
   const platform = await browser.runtime.getPlatformInfo()
   const editorConfig = editors[editor]
   const editorCommand = platform.os === browser.runtime.PlatformOs.MAC ? homebrewDefaultDir + editorConfig.command : editorConfig.command
   if (editorConfig.gui) {
-    templateInput.value = editorCommand + " " + templateTempFileName
-    return
+    return editorCommand + " " + templateTempFileName
   }
 
   let terminalCommand = platform.os === browser.runtime.PlatformOs.MAC ? homebrewDefaultDir : ''
   switch (terminalSelect.value) {
     case 'kitty':
-      terminalCommand += 'kitty --start-as=normal --'
+      terminalCommand += 'kitty --start-as=normal --override=macos_quit_when_last_window_closed=yes --'
       break
     case 'alacritty':
       terminalCommand += 'alacritty -e'
@@ -98,14 +116,20 @@ async function updateTemplate() {
       terminalCommand += 'konsole -e'
       break
   }
-  templateInput.value = terminalCommand + " " + editorCommand + " " + templateTempFileName
+  return terminalCommand + " " + editorCommand + " " + templateTempFileName
+}
+async function updateTemplate() {
+  templateTextArea.value = await generateTemplate()
+}
+async function updateUpstreamTemplate() {
+  upstreamTemplateTextArea.value = await generateTemplate()
 }
 
 async function saveSettings() {
   const editor = editorSelect.value
   const terminal = terminalSelect.value
   const shell = editor === 'custom' ? shellInput.value : 'sh'
-  const template = templateInput.value
+  const template = templateTextArea.value
   const bypassVersionCheck = bypassVersionCheckInput.checked
   await browser.storage.local.set({
     editor: editor,
@@ -122,9 +146,9 @@ async function loadSettings() {
     editorSelect.value = settings.editor
     terminalSelect.value = settings.terminal
     shellInput.value = settings.shell
-    templateInput.value = settings.template
+    templateTextArea.value = settings.template
     bypassVersionCheckInput.checked = settings.bypassVersionCheck
-    updateOptionsForEditor(settings.editor)
+    await updateOptionsForEditor(settings.editor)
   } else {
     await updateTemplate()
   }
