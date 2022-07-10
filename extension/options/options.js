@@ -120,7 +120,10 @@ async function generateTemplate() {
   return terminalCommand + " " + editorCommand + " " + templateTempFileName
 }
 async function updateTemplate() {
-  templateTextArea.value = await generateTemplate()
+  const template = await generateTemplate()
+  if (template !== null) {
+    templateTextArea.value = template
+  }
 }
 async function updateUpstreamTemplate() {
   upstreamTemplateTextArea.value = await generateTemplate()
