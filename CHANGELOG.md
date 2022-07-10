@@ -1,3 +1,31 @@
+<a name="v0.2.0"></a>
+## v0.2.0 (2022-07-10)
+
+
+#### Bug Fixes
+
+* **ext:**
+  *  Template cleared after selecting Custom ([cd69617f](https://github.com/Frederick888/external-editor-revived/commit/cd69617f20ea8ce386c8da0cc7d521aff1d0bf7b))
+  *  Not concatenating chunked HTML body ([175bc5f9](https://github.com/Frederick888/external-editor-revived/commit/175bc5f9df168870fb944cfc91fc0815e066bd2c))
+  *  Editor command should use Homebrew path in macOS ([5f8e6ae8](https://github.com/Frederick888/external-editor-revived/commit/5f8e6ae828a1abebebcce9c04fa13d6d39be9371))
+
+#### Features
+
+*   Add help message headers ([2e1f9e15](https://github.com/Frederick888/external-editor-revived/commit/2e1f9e15af5ed06ee36ba4574803c2f15d36295d))
+* **ext:**
+  *  Add Ctrl-E shortcut for compose action ([0569819e](https://github.com/Frederick888/external-editor-revived/commit/0569819eec18ab1ef8268168b37a6c99053a7824))
+  *  Use textarea for templates ([9d5b0b17](https://github.com/Frederick888/external-editor-revived/commit/9d5b0b1782259b9d3ece7e52a95798db9e17eafb))
+  *  Prompt to sync with upstream template ([86763e6d](https://github.com/Frederick888/external-editor-revived/commit/86763e6d5219df8833db93ff4d8b1f804bc80d02))
+  *  Kitty macos_quit_when_last_window_closed ([3d802fcc](https://github.com/Frederick888/external-editor-revived/commit/3d802fcc3c40dd3113ebb8492ca289daba5c5890))
+* **host:**
+  *  Make header names case-insensitive ([e7dab336](https://github.com/Frederick888/external-editor-revived/commit/e7dab336b34d89bf29211ebd617aee909cc199cc))
+  *  Rename Send-On-Save to Send-On-Exit ([f22f00ad](https://github.com/Frederick888/external-editor-revived/commit/f22f00ad3e9acc35513d754938de5eb3395876d8))
+  *  Skip relatedMessageId if null ([b580bbaa](https://github.com/Frederick888/external-editor-revived/commit/b580bbaa9285ee20792025f203b884d7a2b26823))
+  *  Add -i, -l to macOS shell arguments ([7c119a09](https://github.com/Frederick888/external-editor-revived/commit/7c119a0938b78120ae6ca06cbec5431989289304))
+  *  Support -v/-h for version/help message ([f4bde758](https://github.com/Frederick888/external-editor-revived/commit/f4bde7582cabf5a5fb8378c06d7ed533ff642b13))
+
+
+
 <a name="v0.1.1"></a>
 ## v0.1.1 (2022-07-08)
 

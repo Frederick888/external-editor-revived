@@ -4,7 +4,7 @@
     "short_name": "ExtEditorR",
     "description": "Edit emails in external editors such as Vim",
     "homepage_url": "https://github.com/Frederick888/external-editor-revived",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "author": "Frederick Zhang",
     "applications": {
         "gecko": {
