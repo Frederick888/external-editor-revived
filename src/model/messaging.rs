@@ -58,7 +58,7 @@ impl Exchange {
             )?;
             writeln!(
                 w,
-                "{}: You can though, for example, have two From: header lines if there are two recipients",
+                "{}: You can though, for example, have two To: header lines if there are two recipients",
                 HEADER_HELP
             )?;
         }
