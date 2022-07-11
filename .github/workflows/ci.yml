@@ -96,13 +96,13 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -D warnings
+          args: --frozen --locked -- -D warnings
 
       - name: Build
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release
+          args: --frozen --locked --release
       - name: Artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -116,4 +116,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --release
+          args: --frozen --locked --release
