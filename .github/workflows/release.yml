@@ -102,6 +102,11 @@ jobs:
           default: true
           override: true
           components: rustfmt, clippy
+      - name: Add macOS Targets
+        if: contains(matrix.os, 'macos')
+        run: |
+          rustup target add x86_64-apple-darwin
+          rustup target add aarch64-apple-darwin
 
       - name: Cache
         uses: actions/cache@v3
@@ -132,11 +137,30 @@ jobs:
         with:
           command: test
           args: --frozen --locked --release
-      - name: Build
+      - name: Build (Linux, Windows)
+        if: "!contains(matrix.os, 'macos')"
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --frozen --locked --release
+      - name: Build (macOS, x86_64)
+        if: contains(matrix.os, 'macos')
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --frozen --locked --release --target=x86_64-apple-darwin
+      - name: Build (macOS, aarch64)
+        if: contains(matrix.os, 'macos')
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --frozen --locked --release --target=aarch64-apple-darwin
+      - name: macOS Universal Binary
+        if: contains(matrix.os, 'macos')
+        run: |
+          mkdir -p target/release/
+          lipo -create -output target/release/external-editor-revived target/x86_64-apple-darwin/release/external-editor-revived target/aarch64-apple-darwin/release/external-editor-revived
+          file target/release/external-editor-revived
 
       - name: Pack
         id: pack_native_host
