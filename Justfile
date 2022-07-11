@@ -4,6 +4,12 @@ lint:
     cargo fmt -- --check
     cargo clippy -- -D warnings
 
+macos_uni:
+    set -e
+    cargo build --target=x86_64-apple-darwin --locked --release
+    cargo build --target=aarch64-apple-darwin --locked --release
+    lipo -create -output target/external-editor-revived target/x86_64-apple-darwin/release/external-editor-revived target/aarch64-apple-darwin/release/external-editor-revived
+
 update:
     UPDATED_CRATES="$(cargo update 2>&1 | sed -n 's/^\s*Updating \(.*->.*\)/\1/p')"; \
         if [[ -z "$UPDATED_CRATES" ]]; then \
