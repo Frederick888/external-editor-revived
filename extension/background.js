@@ -55,6 +55,11 @@ async function nativeMessagingListener(response) {
           composeDetails.body += receivedPerTab[response.tab.id][i].composeDetails.body
         }
       }
+      if (!!response.warnings) {
+        for (const warning of response.warnings) {
+          await createBasicNotification('warning', warning.title, warning.message)
+        }
+      }
       await messenger.compose.setComposeDetails(response.tab.id, composeDetails)
       if (response.configuration.sendOnExit) {
         await messenger.compose.sendMessage(response.tab.id)
