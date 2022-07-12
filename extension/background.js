@@ -10,7 +10,7 @@ async function browserActionListener(_tab, info) {
   await composeActionListener(composeTab, info)
 }
 
-async function composeActionListener(tab, _info) {
+async function composeActionListener(tab, info) {
   const settings = await browser.storage.local.get(['editor', 'shell', 'template', 'suppressHelpHeaders', 'bypassVersionCheck'])
   if (!settings.editor) {
     await createBasicNotification(
@@ -28,6 +28,7 @@ async function composeActionListener(tab, _info) {
       version: manifest.version,
       shell: settings.shell,
       template: settings.template,
+      sendOnExit: info.modifiers.indexOf('Shift') >= 0,
       suppressHelpHeaders: !!settings.suppressHelpHeaders,
       bypassVersionCheck: !!settings.bypassVersionCheck,
     },

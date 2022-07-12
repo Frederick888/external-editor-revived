@@ -104,6 +104,7 @@ impl Exchange {
         self.compose_details.cc = ComposeRecipientList::Multiple(Vec::new());
         self.compose_details.bcc = ComposeRecipientList::Multiple(Vec::new());
         self.compose_details.reply_to = ComposeRecipientList::Multiple(Vec::new());
+        self.configuration.send_on_exit = false;
 
         let mut buf = String::new();
         // read headers
@@ -370,6 +371,16 @@ mod tests {
             "ExtEditorR did not recognise the following headers:\n- Foo\n- Bar",
             responses[0].warnings[0].message
         );
+        assert!(!responses[0].configuration.send_on_exit);
+    }
+
+    #[test]
+    fn delete_send_on_exit_header_test() {
+        let mut eml = "Subject: Hello\r\n\r\nThis is a test.\r\n".as_bytes();
+        let mut request = get_blank_request();
+        request.configuration.send_on_exit = true;
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
         assert!(!responses[0].configuration.send_on_exit);
     }
 
