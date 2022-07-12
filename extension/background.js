@@ -5,6 +5,11 @@ const port = browser.runtime.connectNative(nativeAppName)
 
 const receivedPerTab = {}
 
+async function browserActionListener(_tab, info) {
+  const composeTab = await messenger.compose.beginNew()
+  await composeActionListener(composeTab, info)
+}
+
 async function composeActionListener(tab, _info) {
   const settings = await browser.storage.local.get(['editor', 'shell', 'template', 'suppressHelpHeaders', 'bypassVersionCheck'])
   if (!settings.editor) {
@@ -87,5 +92,6 @@ async function createBasicNotification(id, title, message, eventTime = 5000) {
   })
 }
 
+messenger.browserAction.onClicked.addListener(browserActionListener)
 messenger.composeAction.onClicked.addListener(composeActionListener)
 port.onMessage.addListener(nativeMessagingListener)
