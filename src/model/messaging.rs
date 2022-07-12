@@ -34,6 +34,8 @@ pub struct Configuration {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Exchange {
     pub configuration: Configuration,
+    #[serde(default)]
+    pub warnings: Vec<Warning>,
     pub tab: Tab,
     #[serde(rename = "composeDetails")]
     pub compose_details: ComposeDetails,
@@ -105,6 +107,7 @@ impl Exchange {
 
         let mut buf = String::new();
         // read headers
+        let mut unknown_headers = Vec::new();
         while let Ok(length) = r.read_line(&mut buf) {
             if length == 0 {
                 break;
@@ -114,9 +117,9 @@ impl Exchange {
                 break;
             }
             if let Some((header_name, header_value)) = line.split_once(':') {
-                let header_name = header_name.trim().to_lowercase();
+                let header_name_lower = header_name.trim().to_lowercase();
                 let header_value = header_value.trim();
-                match header_name.as_str() {
+                match header_name_lower.as_str() {
                     "from" => self.compose_details.from = ComposeRecipient::from_header_value(header_value)?,
                     "to" => match &mut self.compose_details.to {
                         ComposeRecipientList::Multiple(recipients) => recipients.push(ComposeRecipient::from_header_value(header_value)?),
@@ -137,12 +140,30 @@ impl Exchange {
                     "subject" => self.compose_details.subject = header_value.to_string(),
                     HEADER_LOWER_SEND_ON_EXIT => self.configuration.send_on_exit = header_value == "true",
                     HEADER_LOWER_HELP => {},
-                    _ => eprintln!("ExtEditorR encountered unknown header {} when processing temporary file", header_name),
+                    _ => {
+                        unknown_headers.push(header_name.to_owned());
+                        eprintln!("ExtEditorR encountered unknown header {} when processing temporary file", header_name);
+                    },
                 }
             } else {
                 eprintln!("ExtEditorR failed to process header {}", line);
             }
             buf.clear();
+        }
+        // warning for unknown headers; also disable send-on-exit
+        if !unknown_headers.is_empty() {
+            let mut message = "ExtEditorR did not recognise the following headers:\n".to_string();
+            message += &unknown_headers
+                .iter()
+                .map(|h| "- ".to_owned() + h)
+                .collect::<Vec<String>>()
+                .join("\n");
+            let warning = Warning {
+                title: "Unknown header(s) found".to_owned(),
+                message,
+            };
+            self.warnings.push(warning);
+            self.configuration.send_on_exit = false;
         }
         // read body
         self.compose_details.body.clear();
@@ -215,6 +236,12 @@ pub struct Error {
     pub message: String,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Warning {
+    pub title: String,
+    pub message: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -250,6 +277,7 @@ mod tests {
         let mut request = get_blank_request();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
+        assert!(responses[0].warnings.is_empty());
         assert_eq!("Hello, world!", &responses[0].compose_details.subject);
         assert_eq!(
             "This is a test.",
@@ -263,6 +291,7 @@ mod tests {
         let mut request = get_blank_request();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
+        assert!(responses[0].warnings.is_empty());
         assert_eq!(
             ComposeRecipient::Email("foo@example.com".to_owned()),
             responses[0].compose_details.from
@@ -285,6 +314,7 @@ mod tests {
         let mut request = get_blank_request();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
+        assert!(responses[0].warnings.is_empty());
         assert_eq!(
             ComposeRecipient::Email("foo@example.com".to_owned()),
             responses[0].compose_details.from
@@ -329,6 +359,21 @@ mod tests {
     }
 
     #[test]
+    fn unknown_headers_test() {
+        let mut eml = "Foo: hello\r\nX-ExtEditorR-Send-On-Exit: true\r\nBar: world\r\n\r\nThis is a test.\r\n".as_bytes();
+        let mut request = get_blank_request();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(1, responses[0].warnings.len());
+        assert_eq!("Unknown header(s) found", responses[0].warnings[0].title);
+        assert_eq!(
+            "ExtEditorR did not recognise the following headers:\n- Foo\n- Bar",
+            responses[0].warnings[0].message
+        );
+        assert!(!responses[0].configuration.send_on_exit);
+    }
+
+    #[test]
     fn help_headers_test() {
         let mut request = get_blank_request();
         let mut buf = Vec::new();
@@ -357,6 +402,7 @@ mod tests {
                 suppress_help_headers: false,
                 bypass_version_check: false,
             },
+            warnings: Vec::new(),
             tab: Tab {
                 id: 0,
                 index: 0,
