@@ -63,17 +63,23 @@
         }
     },
     "commands": {
-        "compose-with-send-on-exit": {
-            "suggested_key": {
-                "default": "Ctrl+Shift+E"
-            },
-            "description": "Edit in external editor with Send-on-Exit"
+        "_execute_browser_action": {
+            "description": "Create a new message"
+        },
+        "create-with-send-on-exit": {
+            "description": "Create a new message with Send-On-Exit"
         },
         "_execute_compose_action": {
             "suggested_key": {
                 "default": "Ctrl+E"
             },
-            "description": "Edit in external editor"
+            "description": "Edit current message"
+        },
+        "compose-with-send-on-exit": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+E"
+            },
+            "description": "Edit current message with Send-On-Exit"
         }
     },
     "permissions": [

@@ -6,9 +6,18 @@ const port = browser.runtime.connectNative(nativeAppName)
 const receivedPerTab = {}
 
 async function commandListener(command) {
-  if (command != 'compose-with-send-on-exit') {
-    return
+  switch (command) {
+    case 'create-with-send-on-exit':
+      await browserActionListener(null, {
+        modifiers: ['Shift']
+      })
+      break;
+    case 'compose-with-send-on-exit':
+      await commandComposeWithSendOnExit()
   }
+}
+
+async function commandComposeWithSendOnExit() {
   const windows = await browser.windows.getAll({
     windowTypes: ['messageCompose'],
   })
