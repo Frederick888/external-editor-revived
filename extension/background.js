@@ -5,6 +5,37 @@ const port = browser.runtime.connectNative(nativeAppName)
 
 const receivedPerTab = {}
 
+async function commandListener(command) {
+  if (command != 'compose-with-send-on-exit') {
+    return
+  }
+  const windows = await browser.windows.getAll({
+    windowTypes: ['messageCompose'],
+  })
+  const focusedWindows = windows.filter((w) => w.focused)
+  if (focusedWindows.length != 1) {
+    console.debug('ExtEditorR got message compose windows: ', windows)
+    createBasicNotification('command', 'ExtEditorR shortcut error', 'Failed to determine focused message compose window')
+    return
+  }
+  const focusedWindow = focusedWindows[0]
+
+  const tabs = await browser.tabs.query({
+    active: true,
+    type: 'messageCompose',
+  })
+  const focusedTabs = tabs.filter((t) => t.windowId === focusedWindow.id)
+  if (focusedTabs.length != 1) {
+    console.debug('ExtEditorR got message compose tabs: ', tabs)
+    createBasicNotification('command', 'ExtEditorR shortcut error', 'Failed to determine focused message compose tab')
+    return
+  }
+
+  await composeActionListener(focusedTabs[0], {
+    modifiers: ['Shift']
+  })
+}
+
 async function browserActionListener(_tab, info) {
   const composeTab = await messenger.compose.beginNew()
   await composeActionListener(composeTab, info)
@@ -93,6 +124,7 @@ async function createBasicNotification(id, title, message, eventTime = 5000) {
   })
 }
 
+messenger.commands.onCommand.addListener(commandListener)
 messenger.browserAction.onClicked.addListener(browserActionListener)
 messenger.composeAction.onClicked.addListener(composeActionListener)
 port.onMessage.addListener(nativeMessagingListener)
