@@ -63,6 +63,12 @@
         }
     },
     "commands": {
+        "compose-with-send-on-exit": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+E"
+            },
+            "description": "Edit in external editor with Send-on-Exit"
+        },
         "_execute_compose_action": {
             "suggested_key": {
                 "default": "Ctrl+E"
