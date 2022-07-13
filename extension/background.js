@@ -42,6 +42,9 @@ async function browserActionListener(_tab, info) {
 }
 
 async function composeActionListener(tab, info) {
+  if (!await messenger.composeAction.isEnabled({tabId: tab.id})) {
+    return
+  }
   const settings = await browser.storage.local.get(['editor', 'shell', 'template', 'suppressHelpHeaders', 'bypassVersionCheck'])
   if (!settings.editor) {
     await createBasicNotification(
@@ -69,6 +72,7 @@ async function composeActionListener(tab, info) {
   console.debug(`${manifest.short_name} sending: `, request)
   try {
     port.postMessage(toPlainObject(request))
+    await messenger.composeAction.disable(tab.id)
   } catch (_) {
     await createBasicNotification('port', `${manifest.short_name} failed to talk to messaging host`, 'Please check Tools -> Developer Tools -> Error Console for details')
   }
@@ -86,6 +90,7 @@ async function nativeMessagingListener(response) {
     }
     receivedPerTab[response.tab.id].push(response)
     if (receivedPerTab[response.tab.id].length == response.configuration.total) {
+      await messenger.composeAction.enable(response.tab.id)
       receivedPerTab[response.tab.id].sort((a, b) => a.configuration.sequence - b.configuration.sequence)
       const composeDetails = receivedPerTab[response.tab.id][0].composeDetails
       for (let i = 1; i < receivedPerTab[response.tab.id].length; i++) {
