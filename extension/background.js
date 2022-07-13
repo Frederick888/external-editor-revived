@@ -67,7 +67,11 @@ async function composeActionListener(tab, info) {
     composeDetails: composeDetails,
   }
   console.debug('ExtEditorR sending: ', request)
-  port.postMessage(toPlainObject(request))
+  try {
+    port.postMessage(toPlainObject(request))
+  } catch (_) {
+    await createBasicNotification('port', 'ExtEditorR failed to talk to messaging host', 'Please check Tools -> Developer Tools -> Error Console for details')
+  }
 }
 
 async function nativeMessagingListener(response) {
@@ -106,6 +110,14 @@ async function nativeMessagingListener(response) {
   }
 }
 
+async function nativeMessagingDisconnectListener(p) {
+  let message = 'Please try restarting Thunderbird'
+  if (p.error) {
+    message = `${p.error.message}. Please try restarting Thunderbird`
+  }
+  await createBasicNotification('port', 'ExtEditorR messaging host disconnected', message)
+}
+
 function toPlainObject(o) {
   // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Chrome_incompatibilities#data_cloning_algorithm
   // Extension that rely on the toJSON() method of the JSON serialization
@@ -128,3 +140,4 @@ messenger.commands.onCommand.addListener(commandListener)
 messenger.browserAction.onClicked.addListener(browserActionListener)
 messenger.composeAction.onClicked.addListener(composeActionListener)
 port.onMessage.addListener(nativeMessagingListener)
+port.onDisconnect.addListener(nativeMessagingDisconnectListener)
