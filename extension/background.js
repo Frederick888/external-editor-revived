@@ -6,43 +6,68 @@ const port = browser.runtime.connectNative(nativeAppName)
 const receivedPerTab = {}
 
 async function commandListener(command) {
+  console.debug(`${manifest.short_name} command: ${command}`)
   switch (command) {
     case 'create-with-send-on-exit':
       await browserActionListener(null, {
         modifiers: ['Shift']
       })
-      break;
+      break
     case 'compose-with-send-on-exit':
       await commandComposeWithSendOnExit()
+      break
+    case 'reply-to-sender':
+    case 'reply-to-sender-with-send-on-exit':
+      await commandReply('replyToSender', command.indexOf('send-on-exit') > 0)
+      break
+    case 'reply-to-list':
+    case 'reply-to-list-with-send-on-exit':
+      await commandReply('replyToList', command.indexOf('send-on-exit') > 0)
+      break
+    case 'reply-to-all':
+    case 'reply-to-all-with-send-on-exit':
+      await commandReply('replyToAll', command.indexOf('send-on-exit') > 0)
+      break
   }
 }
 
 async function commandComposeWithSendOnExit() {
-  const windows = await browser.windows.getAll({
-    windowTypes: ['messageCompose'],
-  })
-  const focusedWindows = windows.filter((w) => w.focused)
-  if (focusedWindows.length != 1) {
-    console.debug(`${manifest.short_name} got message compose windows: `, windows)
-    createBasicNotification('command', `${manifest.short_name} shortcut error`, 'Failed to determine focused message compose window')
-    return
-  }
-  const focusedWindow = focusedWindows[0]
-
-  const tabs = await browser.tabs.query({
-    active: true,
-    type: 'messageCompose',
-  })
-  const focusedTabs = tabs.filter((t) => t.windowId === focusedWindow.id)
-  if (focusedTabs.length != 1) {
-    console.debug(`${manifest.short_name} got message compose tabs: `, tabs)
+  const focusedTab = await getFocusedTab('messageCompose')
+  if (!focusedTab) {
     createBasicNotification('command', `${manifest.short_name} shortcut error`, 'Failed to determine focused message compose tab')
     return
   }
-
-  await composeActionListener(focusedTabs[0], {
+  await composeActionListener(focusedTab, {
     modifiers: ['Shift']
   })
+}
+
+async function commandReply(replyType, sendOnExit) {
+  let messages = null
+  const currentMailTab = await messenger.mailTabs.getCurrent()
+  if (currentMailTab) {
+    const currentMailTabWindow = await browser.windows.get(currentMailTab.windowId)
+    if (currentMailTabWindow.focused) {
+      const selectedMessages = await messenger.mailTabs.getSelectedMessages(currentMailTab.id)
+      if (!!selectedMessages) {
+        messages = selectedMessages.messages
+        console.debug(`${manifest.short_name} got selected messages from current mail tab: `, messages)
+      }
+    }
+  }
+
+  const currentMessageDisplayTab = await getFocusedTab('messageDisplay')
+  if (currentMessageDisplayTab) {
+    messages = await messenger.messageDisplay.getDisplayedMessages(currentMessageDisplayTab.id)
+    console.debug(`${manifest.short_name} got messages from current message display: `, messages)
+  }
+
+  if (messages && messages.length > 0) {
+    const tab = await messenger.compose.beginReply(messages[messages.length - 1].id, replyType)
+    await composeActionListener(tab, {
+      modifiers: sendOnExit ? ['Shift'] : []
+    })
+  }
 }
 
 async function browserActionListener(_tab, info) {
@@ -139,6 +164,28 @@ function toPlainObject(o) {
   // a message can be exchanged, because a parsed JSON value is always
   // structurally cloneable.
   return JSON.parse(JSON.stringify(o))
+}
+
+async function getFocusedTab(tabType) {
+  const windows = await browser.windows.getAll({})
+  const focusedWindows = windows.filter((w) => w.focused)
+  if (focusedWindows.length != 1) {
+    console.debug(`${manifest.short_name} got ${tabType} windows: `, windows)
+    return null
+  }
+  const focusedWindow = focusedWindows[0]
+
+  const tabs = await browser.tabs.query({
+    active: true,
+    type: tabType,
+  })
+  const focusedTabs = tabs.filter((t) => t.windowId === focusedWindow.id)
+  if (focusedTabs.length != 1) {
+    console.debug(`${manifest.short_name} got ${tabType} tabs: `, tabs)
+    return null
+  }
+
+  return tabs[0]
 }
 
 async function createBasicNotification(id, title, message, eventTime = 5000) {

@@ -80,11 +80,30 @@
                 "default": "Ctrl+Shift+E"
             },
             "description": "Edit current message with Send-On-Exit"
+        },
+        "reply-to-sender": {
+            "description": "Reply to sender"
+        },
+        "reply-to-sender-with-send-on-exit": {
+            "description": "Reply to sender with Send-On-Exit"
+        },
+        "reply-to-all": {
+            "description": "Reply to all"
+        },
+        "reply-to-all-with-send-on-exit": {
+            "description": "Reply to all with Send-On-Exit"
+        },
+        "reply-to-list": {
+            "description": "Reply to list"
+        },
+        "reply-to-list-with-send-on-exit": {
+            "description": "Reply to list with Send-On-Exit"
         }
     },
     "permissions": [
         "compose",
         "compose.send",
+        "messagesRead",
         "storage",
         "notifications",
         "nativeMessaging"
