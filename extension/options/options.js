@@ -102,7 +102,7 @@ async function generateTemplate() {
   const editorConfig = editors[editor]
   const editorCommand = platform.os === browser.runtime.PlatformOs.MAC ? homebrewDefaultDir + editorConfig.command : editorConfig.command
   if (editorConfig.gui) {
-    return editorCommand + " " + templateTempFileName
+    return `${editorCommand} ${templateTempFileName}`
   }
 
   let terminalCommand = platform.os === browser.runtime.PlatformOs.MAC ? homebrewDefaultDir : ''
@@ -117,7 +117,7 @@ async function generateTemplate() {
       terminalCommand += 'konsole -e'
       break
   }
-  return terminalCommand + " " + editorCommand + " " + templateTempFileName
+  return `${terminalCommand} ${editorCommand} ${templateTempFileName}`
 }
 async function updateTemplate() {
   const template = await generateTemplate()

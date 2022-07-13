@@ -14,8 +14,8 @@ async function commandListener(command) {
   })
   const focusedWindows = windows.filter((w) => w.focused)
   if (focusedWindows.length != 1) {
-    console.debug('ExtEditorR got message compose windows: ', windows)
-    createBasicNotification('command', 'ExtEditorR shortcut error', 'Failed to determine focused message compose window')
+    console.debug(`${manifest.short_name} got message compose windows: `, windows)
+    createBasicNotification('command', `${manifest.short_name} shortcut error`, 'Failed to determine focused message compose window')
     return
   }
   const focusedWindow = focusedWindows[0]
@@ -26,8 +26,8 @@ async function commandListener(command) {
   })
   const focusedTabs = tabs.filter((t) => t.windowId === focusedWindow.id)
   if (focusedTabs.length != 1) {
-    console.debug('ExtEditorR got message compose tabs: ', tabs)
-    createBasicNotification('command', 'ExtEditorR shortcut error', 'Failed to determine focused message compose tab')
+    console.debug(`${manifest.short_name} got message compose tabs: `, tabs)
+    createBasicNotification('command', `${manifest.short_name} shortcut error`, 'Failed to determine focused message compose tab')
     return
   }
 
@@ -46,8 +46,8 @@ async function composeActionListener(tab, info) {
   if (!settings.editor) {
     await createBasicNotification(
       'no-settings',
-      manifest.short_name + ' needs to be configured first!',
-      'Please go to Add-ons and Themes -> Extensions -> ' + manifest.name + ' to configure this extension.'
+      `${manifest.short_name} needs to be configured first!`,
+      `Please go to Add-ons and Themes -> Extensions -> ${manifest.short_name} to configure this extension.`
     )
     return
   }
@@ -66,16 +66,16 @@ async function composeActionListener(tab, info) {
     tab: tab,
     composeDetails: composeDetails,
   }
-  console.debug('ExtEditorR sending: ', request)
+  console.debug(`${manifest.short_name} sending: `, request)
   try {
     port.postMessage(toPlainObject(request))
   } catch (_) {
-    await createBasicNotification('port', 'ExtEditorR failed to talk to messaging host', 'Please check Tools -> Developer Tools -> Error Console for details')
+    await createBasicNotification('port', `${manifest.short_name} failed to talk to messaging host`, 'Please check Tools -> Developer Tools -> Error Console for details')
   }
 }
 
 async function nativeMessagingListener(response) {
-  console.debug('ExtEditorR received: ', response)
+  console.debug(`${manifest.short_name} received: `, response)
   if (response.title && response.message) {
     await createBasicNotification('', response.title, response.message)
   } else {
@@ -115,7 +115,7 @@ async function nativeMessagingDisconnectListener(p) {
   if (p.error) {
     message = `${p.error.message}. Please try restarting Thunderbird`
   }
-  await createBasicNotification('port', 'ExtEditorR messaging host disconnected', message)
+  await createBasicNotification('port', `${manifest.short_name} messaging host disconnected`, message)
 }
 
 function toPlainObject(o) {
