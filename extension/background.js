@@ -142,7 +142,12 @@ async function nativeMessagingListener(response) {
       }
       await messenger.compose.setComposeDetails(response.tab.id, composeDetails)
       if (response.configuration.sendOnExit) {
-        await messenger.compose.sendMessage(response.tab.id)
+        try {
+          await messenger.compose.sendMessage(response.tab.id)
+        } catch (_) {
+          // only catchable on Thunderbird >= 102
+          createBasicNotification('send', `${manifest.short_name} failed to send message`, 'Please check if you have fill in recipients and other mandatory fields')
+        }
       }
       delete receivedPerTab[response.tab.id]
     }
