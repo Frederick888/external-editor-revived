@@ -1,3 +1,28 @@
+<a name="v0.3.0"></a>
+## v0.3.0 (2022-07-15)
+
+
+#### Features
+
+*   Shift-click on buttons for Save-On-Exit ([533358dd](https://github.com/Frederick888/external-editor-revived/commit/533358dd62553390ea5306f82bf2ad4bd24abc95))
+*   Cancel send-on-exit in case of unknown headers ([3ddc4609](https://github.com/Frederick888/external-editor-revived/commit/3ddc4609ab73308503ad31a19e5aab75450a2a30))
+* **ext:**
+  *  Notifications for sendMessage() errors ([a1536f10](https://github.com/Frederick888/external-editor-revived/commit/a1536f10d7129edc8b5678aef4cd1196bfc8d512))
+  *  Commands for reply from mail tab ([54b9e7d5](https://github.com/Frederick888/external-editor-revived/commit/54b9e7d51ccd9ff13a8483f986bf774a6c0e41bc))
+  *  Create message commands without default shortcuts ([81c84b6b](https://github.com/Frederick888/external-editor-revived/commit/81c84b6bd5ad089bf34aec76b61293bdaf458e48))
+  *  Disable compose action when waiting for editor ([8554f39e](https://github.com/Frederick888/external-editor-revived/commit/8554f39e81650f89ca980adba152a062e8a98085))
+  *  Notifications for messaging host errors ([d313ad4b](https://github.com/Frederick888/external-editor-revived/commit/d313ad4b98bced321cc4043cdc6b2cfb11d68758))
+  *  Ctrl-Shift-E to edit with Send-On-Exit ([2cf4f040](https://github.com/Frederick888/external-editor-revived/commit/2cf4f0409604bf202095d8f571b9eaf283590054))
+  *  Add main toolbar button (browserAction) ([a47c3dd9](https://github.com/Frederick888/external-editor-revived/commit/a47c3dd94128dd3f4b2d7753b5da1ba3657d7669))
+  *  Adjust wording of version bypass description ([22d7774d](https://github.com/Frederick888/external-editor-revived/commit/22d7774de494dd10899ac80903070b8f57b1aa85))
+* **host:**  Print target OS & arch in -v output ([8f1155fd](https://github.com/Frederick888/external-editor-revived/commit/8f1155fd16103e0b4c1f87aafdc876db437a1309))
+
+#### Bug Fixes
+
+* **ext:**  Small fix for header help message ([ade84119](https://github.com/Frederick888/external-editor-revived/commit/ade8411953b92f8330f5fb3a063968349d4ff096))
+
+
+
 <a name="v0.2.0"></a>
 ## v0.2.0 (2022-07-10)
 
