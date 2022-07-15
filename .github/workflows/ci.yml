@@ -101,26 +101,26 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --frozen --locked -- -D warnings
+          args: --locked -- -D warnings
 
       - name: Build (Linux, Windows)
         if: "!contains(matrix.os, 'macos')"
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --frozen --locked --release
+          args: --locked --release
       - name: Build (macOS, x86_64)
         if: contains(matrix.os, 'macos')
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --frozen --locked --release --target=x86_64-apple-darwin
+          args: --locked --release --target=x86_64-apple-darwin
       - name: Build (macOS, aarch64)
         if: contains(matrix.os, 'macos')
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --frozen --locked --release --target=aarch64-apple-darwin
+          args: --locked --release --target=aarch64-apple-darwin
       - name: macOS Universal Binary
         if: contains(matrix.os, 'macos')
         run: |
@@ -140,4 +140,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --frozen --locked --release
+          args: --locked --release
