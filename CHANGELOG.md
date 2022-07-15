@@ -4,7 +4,7 @@
 
 #### Features
 
-*   Shift-click on buttons for Save-On-Exit ([533358dd](https://github.com/Frederick888/external-editor-revived/commit/533358dd62553390ea5306f82bf2ad4bd24abc95))
+*   Shift-click on buttons for Send-On-Exit ([533358dd](https://github.com/Frederick888/external-editor-revived/commit/533358dd62553390ea5306f82bf2ad4bd24abc95))
 *   Cancel send-on-exit in case of unknown headers ([3ddc4609](https://github.com/Frederick888/external-editor-revived/commit/3ddc4609ab73308503ad31a19e5aab75450a2a30))
 * **ext:**
   *  Notifications for sendMessage() errors ([a1536f10](https://github.com/Frederick888/external-editor-revived/commit/a1536f10d7129edc8b5678aef4cd1196bfc8d512))
