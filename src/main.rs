@@ -147,7 +147,9 @@ fn main() -> anyhow::Result<()> {
         match arg.as_str() {
             "-v" | "--version" => {
                 println!(
-                    "External Editor Revived native messaging host v{}",
+                    "External Editor Revived native messaging host for {} ({}) v{}",
+                    env::consts::OS,
+                    env::consts::ARCH,
                     env!("CARGO_PKG_VERSION")
                 );
                 return Ok(());
