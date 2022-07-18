@@ -49,7 +49,8 @@
         }
     },
     "compose_action": {
-        "default_title": "External Editor",
+        "default_label": "External Editor",
+        "default_title": "Edit current message in external editor",
         "default_icon": {
             "16": "assets/icon-16.png",
             "24": "assets/icon-24.png",
