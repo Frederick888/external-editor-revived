@@ -15,7 +15,7 @@ const DEFAULT_SHELL_ARGS: &[&str] = &["-c"];
 const DEFAULT_SHELL_ARGS_MACOS: &[&str] = &["-i", "-l", "-c"];
 
 fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Error> {
-    if request.configuration.version != env!("CARGO_PKG_VERSION") {
+    if !util::is_extension_compatible(env!("CARGO_PKG_VERSION"), &request.configuration.version) {
         if request.configuration.bypass_version_check {
             eprintln!(
                 "Bypassing version check: Thunderbird extension is {} while native messaging host is {}.",
