@@ -89,7 +89,7 @@ impl Exchange {
             )?;
         }
         writeln!(w)?;
-        writeln!(w, "{}", self.compose_details.get_body())?;
+        write!(w, "{}", self.compose_details.get_body())?;
         Ok(())
     }
 
@@ -184,13 +184,6 @@ impl Exchange {
         if !chunk.is_empty() || compose_details_list.is_empty() {
             compose_details_list.push(self.compose_details.clone());
         }
-        // remove redundant carriage returns / line breaks from last chunk
-        if let Some(compose_details) = compose_details_list.last_mut() {
-            if compose_details.is_plain_text {
-                compose_details.plain_text_body =
-                    compose_details.plain_text_body.trim_end().to_owned();
-            }
-        }
 
         let mut responses: Vec<Self> = compose_details_list
             .into_iter()
@@ -268,7 +261,7 @@ mod tests {
         assert!(output.contains("Cc: bar@example.com"));
         assert!(output.contains(&format!("Subject: {}", request.compose_details.subject)));
         assert!(output.contains("X-ExtEditorR-Send-On-Exit: false"));
-        assert!(output.ends_with(&format!("{}\n", request.compose_details.plain_text_body)));
+        assert!(output.ends_with(&request.compose_details.plain_text_body));
         assert!(!output.contains(&request.compose_details.body));
     }
 
@@ -281,7 +274,7 @@ mod tests {
         assert!(responses[0].warnings.is_empty());
         assert_eq!("Hello, world!", &responses[0].compose_details.subject);
         assert_eq!(
-            "This is a test.",
+            "This is a test.\r\n",
             &responses[0].compose_details.plain_text_body
         );
     }
@@ -347,7 +340,7 @@ mod tests {
             "Hello, world! ",
             &responses[1].compose_details.plain_text_body
         );
-        assert_eq!("Hello!", &responses[2].compose_details.plain_text_body);
+        assert_eq!("Hello!\r\n", &responses[2].compose_details.plain_text_body);
     }
 
     #[test]
