@@ -7,7 +7,7 @@
 - OS: <!-- Linux / macOS / Windows -->
 - Thunderbird version:
 - ExtEditorR extension version: <!-- Add-ons and Themes -> Extensions -> External Editor Revived -> Details -->
-- ExtEditorR host version: <!-- /path/to/external-editor-revived --version -->
+- `external-editor-revived --version` output:
 
 # Configuration
 
