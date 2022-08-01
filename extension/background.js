@@ -63,7 +63,16 @@ async function commandReply(replyType, sendOnExit) {
   }
 
   if (messages && messages.length > 0) {
-    const tab = await messenger.compose.beginReply(messages[messages.length - 1].id, replyType)
+    const accountId = messages[messages.length - 1].folder.accountId
+    const account = await messenger.accounts.get(accountId)
+    let tab
+    if (!!account && account.identities.length > 0) {
+      tab = await messenger.compose.beginReply(messages[messages.length - 1].id, replyType, {
+        identityId: account.identities[0].id,
+      })
+    } else {
+      tab = await messenger.compose.beginReply(messages[messages.length - 1].id, replyType)
+    }
     await composeActionListener(tab, {
       modifiers: sendOnExit ? ['Shift'] : []
     })

@@ -104,6 +104,7 @@
     "permissions": [
         "compose",
         "compose.send",
+        "accountsRead",
         "messagesRead",
         "storage",
         "notifications",
