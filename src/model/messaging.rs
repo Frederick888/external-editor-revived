@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::io;
 
@@ -76,11 +76,7 @@ impl Exchange {
     {
         let mut compose_details_list: Vec<ComposeDetails> = Vec::new();
 
-        // reset all ComposeRecipientList fields to empty ComposeRecipientList::Multiple
-        self.compose_details.to = ComposeRecipientList::Multiple(Vec::new());
-        self.compose_details.cc = ComposeRecipientList::Multiple(Vec::new());
-        self.compose_details.bcc = ComposeRecipientList::Multiple(Vec::new());
-        self.compose_details.reply_to = ComposeRecipientList::Multiple(Vec::new());
+        self.compose_details.clear_recipients();
         self.configuration.send_on_exit = false;
 
         let mut buf = String::new();
@@ -102,30 +98,31 @@ impl Exchange {
                     continue;
                 }
                 match header_name_lower.as_str() {
-                    "from" => self.compose_details.from = ComposeRecipient::from_header_value(header_value)?,
-                    "to" => match &mut self.compose_details.to {
-                        ComposeRecipientList::Multiple(recipients) => recipients.push(ComposeRecipient::from_header_value(header_value)?),
-                        ComposeRecipientList::Single(_) => { return Err(anyhow!("ComposeDetails field To is Single when merging EML back. This shouldn't have happened!")) },
-                    },
-                    "cc" => match &mut self.compose_details.cc {
-                        ComposeRecipientList::Multiple(recipients) => recipients.push(ComposeRecipient::from_header_value(header_value)?),
-                        ComposeRecipientList::Single(_) => { return Err(anyhow!("ComposeDetails field Cc is Single when merging EML back. This shouldn't have happened!")) },
-                    },
-                    "bcc" => match &mut self.compose_details.bcc {
-                        ComposeRecipientList::Multiple(recipients) => recipients.push(ComposeRecipient::from_header_value(header_value)?),
-                        ComposeRecipientList::Single(_) => { return Err(anyhow!("ComposeDetails field Bcc is Single when merging EML back. This shouldn't have happened!")) },
-                    },
-                    "reply-to" => match &mut self.compose_details.reply_to {
-                        ComposeRecipientList::Multiple(recipients) => recipients.push(ComposeRecipient::from_header_value(header_value)?),
-                        ComposeRecipientList::Single(_) => { return Err(anyhow!("ComposeDetails field Reply-To is Single when merging EML back. This shouldn't have happened!")) },
-                    },
+                    "from" => {
+                        self.compose_details.from =
+                            ComposeRecipient::from_header_value(header_value)?
+                    }
+                    "to" => self
+                        .compose_details
+                        .add_to(ComposeRecipient::from_header_value(header_value)?),
+                    "cc" => self
+                        .compose_details
+                        .add_cc(ComposeRecipient::from_header_value(header_value)?),
+                    "bcc" => self
+                        .compose_details
+                        .add_bcc(ComposeRecipient::from_header_value(header_value)?),
+                    "reply-to" => self
+                        .compose_details
+                        .add_reply_to(ComposeRecipient::from_header_value(header_value)?),
                     "subject" => self.compose_details.subject = header_value.to_string(),
-                    HEADER_LOWER_SEND_ON_EXIT => self.configuration.send_on_exit = header_value == "true",
-                    HEADER_LOWER_HELP => {},
+                    HEADER_LOWER_SEND_ON_EXIT => {
+                        self.configuration.send_on_exit = header_value == "true"
+                    }
+                    HEADER_LOWER_HELP => {}
                     _ => {
                         unknown_headers.push(header_name.to_owned());
                         eprintln!("ExtEditorR encountered unknown header {} when processing temporary file", header_name);
-                    },
+                    }
                 }
             } else {
                 eprintln!("ExtEditorR failed to process header {}", line);
