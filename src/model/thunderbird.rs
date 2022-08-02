@@ -91,6 +91,50 @@ impl ComposeDetails {
             self.body = body;
         }
     }
+
+    /// Reset all ComposeRecipientList fields to empty ComposeRecipientList::Multiple
+    pub fn clear_recipients(&mut self) {
+        self.to = ComposeRecipientList::Multiple(Vec::new());
+        self.cc = ComposeRecipientList::Multiple(Vec::new());
+        self.bcc = ComposeRecipientList::Multiple(Vec::new());
+        self.reply_to = ComposeRecipientList::Multiple(Vec::new());
+    }
+
+    pub fn add_to(&mut self, recipient: ComposeRecipient) {
+        match &mut self.to {
+            ComposeRecipientList::Single(r) => {
+                self.to = ComposeRecipientList::Multiple(vec![r.clone(), recipient]);
+            }
+            ComposeRecipientList::Multiple(l) => l.push(recipient),
+        }
+    }
+
+    pub fn add_cc(&mut self, recipient: ComposeRecipient) {
+        match &mut self.cc {
+            ComposeRecipientList::Single(r) => {
+                self.cc = ComposeRecipientList::Multiple(vec![r.clone(), recipient]);
+            }
+            ComposeRecipientList::Multiple(l) => l.push(recipient),
+        }
+    }
+
+    pub fn add_bcc(&mut self, recipient: ComposeRecipient) {
+        match &mut self.bcc {
+            ComposeRecipientList::Single(r) => {
+                self.bcc = ComposeRecipientList::Multiple(vec![r.clone(), recipient]);
+            }
+            ComposeRecipientList::Multiple(l) => l.push(recipient),
+        }
+    }
+
+    pub fn add_reply_to(&mut self, recipient: ComposeRecipient) {
+        match &mut self.reply_to {
+            ComposeRecipientList::Single(r) => {
+                self.reply_to = ComposeRecipientList::Multiple(vec![r.clone(), recipient]);
+            }
+            ComposeRecipientList::Multiple(l) => l.push(recipient),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -280,6 +324,68 @@ mod tests {
                 );
             }
             _ => panic!("should not be ComposeRecipientList::Single"),
+        }
+    }
+
+    #[test]
+    fn compose_details_add_recipient_to_single_test() {
+        let mut compose_details = get_blank_compose_details();
+        compose_details.add_to(ComposeRecipient::Email("hello@example.com".to_owned()));
+        match compose_details.to {
+            ComposeRecipientList::Single(_) => panic!("should not be ComposeRecipientList::Single"),
+            ComposeRecipientList::Multiple(l) => {
+                assert_eq!(2, l.len());
+                assert_eq!(
+                    ComposeRecipient::Email("someone@example.com".to_owned()),
+                    l[0]
+                );
+                assert_eq!(
+                    ComposeRecipient::Email("hello@example.com".to_owned()),
+                    l[1]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn compose_details_add_recipient_to_multiple_test() {
+        let mut compose_details = get_blank_compose_details();
+        compose_details.add_cc(ComposeRecipient::Email("someone@example.com".to_owned()));
+        compose_details.add_cc(ComposeRecipient::Email("hello@example.com".to_owned()));
+        match compose_details.cc {
+            ComposeRecipientList::Single(_) => panic!("should not be ComposeRecipientList::Single"),
+            ComposeRecipientList::Multiple(l) => {
+                assert_eq!(2, l.len());
+                assert_eq!(
+                    ComposeRecipient::Email("someone@example.com".to_owned()),
+                    l[0]
+                );
+                assert_eq!(
+                    ComposeRecipient::Email("hello@example.com".to_owned()),
+                    l[1]
+                );
+            }
+        }
+    }
+
+    fn get_blank_compose_details() -> ComposeDetails {
+        ComposeDetails {
+            from: ComposeRecipient::Email("someone@example.com".to_owned()),
+            to: ComposeRecipientList::Single(ComposeRecipient::Email(
+                "someone@example.com".to_owned(),
+            )),
+            cc: ComposeRecipientList::Multiple(Vec::new()),
+            bcc: ComposeRecipientList::Multiple(Vec::new()),
+            compose_type: ComposeType::New,
+            related_message_id: None,
+            reply_to: ComposeRecipientList::Multiple(Vec::new()),
+            follow_up_to: ComposeRecipientList::Multiple(Vec::new()),
+            newsgroups: Newsgroups::Multiple(Vec::new()),
+            subject: "".to_owned(),
+            is_plain_text: true,
+            body: "".to_owned(),
+            plain_text_body: "".to_owned(),
+            attachments: Vec::new(),
         }
     }
 }

@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::io;
 
@@ -10,6 +10,11 @@ const HEADER_SEND_ON_EXIT: &str = "X-ExtEditorR-Send-On-Exit";
 const HEADER_LOWER_SEND_ON_EXIT: &str = "x-exteditorr-send-on-exit"; // cspell: disable-line
 const HEADER_HELP: &str = "X-ExtEditorR-Help";
 const HEADER_LOWER_HELP: &str = "x-exteditorr-help"; // cspell: disable-line
+const HEADER_HELP_LINES: &[&str] = &[
+    "Use one address per `To/Cc/Bcc/Reply-To` header",
+    "(e.g. two recipients require two `To:` headers).",
+    "KEEP blank line below to separate headers from body.",
+];
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,46 +52,18 @@ impl Exchange {
         W: io::Write,
     {
         writeln!(w, "From: {}", self.compose_details.from.to_header_value()?)?;
-        if !self.configuration.suppress_help_headers {
-            writeln!(
-                w,
-                "{}: You can add or delete To/Cc/Bcc/Reply-To headers",
-                HEADER_HELP
-            )?;
-            writeln!(
-                w,
-                "{}: One header line can only have one email/contact/mailing list",
-                HEADER_HELP
-            )?;
-            writeln!(
-                w,
-                "{}: You can though, for example, have two To: header lines if there are two recipients",
-                HEADER_HELP
-            )?;
-        }
         Self::compose_recipient_list_to_eml(w, "To", &self.compose_details.to)?;
         Self::compose_recipient_list_to_eml(w, "Cc", &self.compose_details.cc)?;
         Self::compose_recipient_list_to_eml(w, "Bcc", &self.compose_details.bcc)?;
         Self::compose_recipient_list_to_eml(w, "Reply-To", &self.compose_details.reply_to)?;
         writeln!(w, "Subject: {}", self.compose_details.subject)?;
-        if !self.configuration.suppress_help_headers {
-            writeln!(
-                w,
-                "{}: If you update header below to {}: true, ExtEditorR will try sending out this email immediately after the editor exits",
-                HEADER_HELP, HEADER_SEND_ON_EXIT
-            )?;
-        }
         writeln!(
             w,
             "{}: {}",
             HEADER_SEND_ON_EXIT, self.configuration.send_on_exit
         )?;
         if !self.configuration.suppress_help_headers {
-            writeln!(
-                w,
-                "{}: Do NOT remove the blank line below separating headers from main body",
-                HEADER_HELP
-            )?;
+            Self::write_help_headers(w)?;
         }
         writeln!(w)?;
         write!(w, "{}", self.compose_details.get_body())?;
@@ -99,11 +76,7 @@ impl Exchange {
     {
         let mut compose_details_list: Vec<ComposeDetails> = Vec::new();
 
-        // reset all ComposeRecipientList fields to empty ComposeRecipientList::Multiple
-        self.compose_details.to = ComposeRecipientList::Multiple(Vec::new());
-        self.compose_details.cc = ComposeRecipientList::Multiple(Vec::new());
-        self.compose_details.bcc = ComposeRecipientList::Multiple(Vec::new());
-        self.compose_details.reply_to = ComposeRecipientList::Multiple(Vec::new());
+        self.compose_details.clear_recipients();
         self.configuration.send_on_exit = false;
 
         let mut buf = String::new();
@@ -120,31 +93,36 @@ impl Exchange {
             if let Some((header_name, header_value)) = line.split_once(':') {
                 let header_name_lower = header_name.trim().to_lowercase();
                 let header_value = header_value.trim();
+                if header_value.is_empty() {
+                    buf.clear();
+                    continue;
+                }
                 match header_name_lower.as_str() {
-                    "from" => self.compose_details.from = ComposeRecipient::from_header_value(header_value)?,
-                    "to" => match &mut self.compose_details.to {
-                        ComposeRecipientList::Multiple(recipients) => recipients.push(ComposeRecipient::from_header_value(header_value)?),
-                        ComposeRecipientList::Single(_) => { return Err(anyhow!("ComposeDetails field To is Single when merging EML back. This shouldn't have happened!")) },
-                    },
-                    "cc" => match &mut self.compose_details.cc {
-                        ComposeRecipientList::Multiple(recipients) => recipients.push(ComposeRecipient::from_header_value(header_value)?),
-                        ComposeRecipientList::Single(_) => { return Err(anyhow!("ComposeDetails field Cc is Single when merging EML back. This shouldn't have happened!")) },
-                    },
-                    "bcc" => match &mut self.compose_details.bcc {
-                        ComposeRecipientList::Multiple(recipients) => recipients.push(ComposeRecipient::from_header_value(header_value)?),
-                        ComposeRecipientList::Single(_) => { return Err(anyhow!("ComposeDetails field Bcc is Single when merging EML back. This shouldn't have happened!")) },
-                    },
-                    "reply-to" => match &mut self.compose_details.reply_to {
-                        ComposeRecipientList::Multiple(recipients) => recipients.push(ComposeRecipient::from_header_value(header_value)?),
-                        ComposeRecipientList::Single(_) => { return Err(anyhow!("ComposeDetails field Reply-To is Single when merging EML back. This shouldn't have happened!")) },
-                    },
+                    "from" => {
+                        self.compose_details.from =
+                            ComposeRecipient::from_header_value(header_value)?
+                    }
+                    "to" => self
+                        .compose_details
+                        .add_to(ComposeRecipient::from_header_value(header_value)?),
+                    "cc" => self
+                        .compose_details
+                        .add_cc(ComposeRecipient::from_header_value(header_value)?),
+                    "bcc" => self
+                        .compose_details
+                        .add_bcc(ComposeRecipient::from_header_value(header_value)?),
+                    "reply-to" => self
+                        .compose_details
+                        .add_reply_to(ComposeRecipient::from_header_value(header_value)?),
                     "subject" => self.compose_details.subject = header_value.to_string(),
-                    HEADER_LOWER_SEND_ON_EXIT => self.configuration.send_on_exit = header_value == "true",
-                    HEADER_LOWER_HELP => {},
+                    HEADER_LOWER_SEND_ON_EXIT => {
+                        self.configuration.send_on_exit = header_value == "true"
+                    }
+                    HEADER_LOWER_HELP => {}
                     _ => {
                         unknown_headers.push(header_name.to_owned());
                         eprintln!("ExtEditorR encountered unknown header {} when processing temporary file", header_name);
-                    },
+                    }
                 }
             } else {
                 eprintln!("ExtEditorR failed to process header {}", line);
@@ -213,11 +191,24 @@ impl Exchange {
             ComposeRecipientList::Single(recipient) => {
                 writeln!(w, "{}: {}", name, recipient.to_header_value()?)?;
             }
+            ComposeRecipientList::Multiple(recipients) if recipients.is_empty() => {
+                writeln!(w, "{}: ", name)?;
+            }
             ComposeRecipientList::Multiple(recipients) => {
                 for recipient in recipients {
                     writeln!(w, "{}: {}", name, recipient.to_header_value()?)?;
                 }
             }
+        }
+        Ok(())
+    }
+
+    fn write_help_headers<W>(w: &mut W) -> Result<()>
+    where
+        W: io::Write,
+    {
+        for line in HEADER_HELP_LINES {
+            writeln!(w, "{}: {}", HEADER_HELP, line)?;
         }
         Ok(())
     }
@@ -263,6 +254,43 @@ mod tests {
         assert!(output.contains("X-ExtEditorR-Send-On-Exit: false"));
         assert!(output.ends_with(&request.compose_details.plain_text_body));
         assert!(!output.contains(&request.compose_details.body));
+    }
+
+    #[test]
+    fn header_placeholder_test() {
+        let mut request = get_blank_request();
+        request.compose_details.is_plain_text = true;
+        request.compose_details.plain_text_body = "Hello, world!".to_owned();
+
+        let mut buf = Vec::new();
+        let result = request.to_eml(&mut buf);
+        assert!(result.is_ok());
+        let output = String::from_utf8(buf).unwrap();
+        assert!(output.contains("From: "));
+        assert!(output.contains("To: "));
+        assert!(output.contains("Cc: "));
+        assert!(output.contains("Bcc: "));
+        assert!(output.contains("Reply-To: "));
+        assert!(output.contains("Subject: "));
+    }
+
+    #[test]
+    fn omit_header_placeholder_when_given_test() {
+        let mut request = get_blank_request();
+        request.compose_details.cc = ComposeRecipientList::Multiple(vec![
+            ComposeRecipient::Email("foo@example.com".to_owned()),
+            ComposeRecipient::Email("bar@example.com".to_owned()),
+        ]);
+        request.compose_details.is_plain_text = true;
+        request.compose_details.plain_text_body = "Hello, world!".to_owned();
+
+        let mut buf = Vec::new();
+        let result = request.to_eml(&mut buf);
+        assert!(result.is_ok());
+        let output = String::from_utf8(buf).unwrap();
+        assert_eq!(2, output.matches("Cc:").count());
+        assert!(output.contains("Cc: foo@example.com"));
+        assert!(output.contains("Cc: bar@example.com"));
     }
 
     #[test]
@@ -322,6 +350,38 @@ mod tests {
                 }),
             ]),
             responses[0].compose_details.to
+        );
+    }
+
+    #[test]
+    fn merge_with_header_placeholder_test() {
+        let mut eml = "From: foo@example.com\r\nTo: bar@example.com\r\nCc: \r\nBcc: \r\nReply-To: another@example.com\r\n\r\nThis is a test.\r\n".as_bytes();
+        let mut request = get_blank_request();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(
+            ComposeRecipient::Email("foo@example.com".to_owned()),
+            responses[0].compose_details.from
+        );
+        assert_eq!(
+            ComposeRecipientList::Multiple(vec![ComposeRecipient::Email(
+                "bar@example.com".to_owned()
+            )]),
+            responses[0].compose_details.to
+        );
+        assert_eq!(
+            ComposeRecipientList::Multiple(vec![]),
+            responses[0].compose_details.cc
+        );
+        assert_eq!(
+            ComposeRecipientList::Multiple(vec![]),
+            responses[0].compose_details.bcc
+        );
+        assert_eq!(
+            ComposeRecipientList::Multiple(vec![ComposeRecipient::Email(
+                "another@example.com".to_owned()
+            )]),
+            responses[0].compose_details.reply_to
         );
     }
 
