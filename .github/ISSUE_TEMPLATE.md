@@ -18,4 +18,6 @@
 <!-- Tools -> Developer Tools -> Error Console -->
 <!-- Open Error Console *before* testing ExtEditorR! -->
 
+# Screenshots
+
 <!-- Screenshots if needed -->
