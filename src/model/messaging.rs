@@ -10,6 +10,11 @@ const HEADER_SEND_ON_EXIT: &str = "X-ExtEditorR-Send-On-Exit";
 const HEADER_LOWER_SEND_ON_EXIT: &str = "x-exteditorr-send-on-exit"; // cspell: disable-line
 const HEADER_HELP: &str = "X-ExtEditorR-Help";
 const HEADER_LOWER_HELP: &str = "x-exteditorr-help"; // cspell: disable-line
+const HEADER_HELP_LINES: &[&str] = &[
+    "Use one address per `To/Cc/Bcc/Reply-To` header",
+    "(e.g. two recipients require two `To:` headers).",
+    "KEEP blank line below to separate headers from body.",
+];
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,46 +52,18 @@ impl Exchange {
         W: io::Write,
     {
         writeln!(w, "From: {}", self.compose_details.from.to_header_value()?)?;
-        if !self.configuration.suppress_help_headers {
-            writeln!(
-                w,
-                "{}: You can add or delete To/Cc/Bcc/Reply-To headers",
-                HEADER_HELP
-            )?;
-            writeln!(
-                w,
-                "{}: One header line can only have one email/contact/mailing list",
-                HEADER_HELP
-            )?;
-            writeln!(
-                w,
-                "{}: You can though, for example, have two To: header lines if there are two recipients",
-                HEADER_HELP
-            )?;
-        }
         Self::compose_recipient_list_to_eml(w, "To", &self.compose_details.to)?;
         Self::compose_recipient_list_to_eml(w, "Cc", &self.compose_details.cc)?;
         Self::compose_recipient_list_to_eml(w, "Bcc", &self.compose_details.bcc)?;
         Self::compose_recipient_list_to_eml(w, "Reply-To", &self.compose_details.reply_to)?;
         writeln!(w, "Subject: {}", self.compose_details.subject)?;
-        if !self.configuration.suppress_help_headers {
-            writeln!(
-                w,
-                "{}: If you update header below to {}: true, ExtEditorR will try sending out this email immediately after the editor exits",
-                HEADER_HELP, HEADER_SEND_ON_EXIT
-            )?;
-        }
         writeln!(
             w,
             "{}: {}",
             HEADER_SEND_ON_EXIT, self.configuration.send_on_exit
         )?;
         if !self.configuration.suppress_help_headers {
-            writeln!(
-                w,
-                "{}: Do NOT remove the blank line below separating headers from main body",
-                HEADER_HELP
-            )?;
+            Self::write_help_headers(w)?;
         }
         writeln!(w)?;
         write!(w, "{}", self.compose_details.get_body())?;
@@ -218,6 +195,16 @@ impl Exchange {
                     writeln!(w, "{}: {}", name, recipient.to_header_value()?)?;
                 }
             }
+        }
+        Ok(())
+    }
+
+    fn write_help_headers<W>(w: &mut W) -> Result<()>
+    where
+        W: io::Write,
+    {
+        for line in HEADER_HELP_LINES {
+            writeln!(w, "{}: {}", HEADER_HELP, line)?;
         }
         Ok(())
     }
