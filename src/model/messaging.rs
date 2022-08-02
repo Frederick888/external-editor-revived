@@ -97,6 +97,10 @@ impl Exchange {
             if let Some((header_name, header_value)) = line.split_once(':') {
                 let header_name_lower = header_name.trim().to_lowercase();
                 let header_value = header_value.trim();
+                if header_value.is_empty() {
+                    buf.clear();
+                    continue;
+                }
                 match header_name_lower.as_str() {
                     "from" => self.compose_details.from = ComposeRecipient::from_header_value(header_value)?,
                     "to" => match &mut self.compose_details.to {
@@ -190,6 +194,9 @@ impl Exchange {
             ComposeRecipientList::Single(recipient) => {
                 writeln!(w, "{}: {}", name, recipient.to_header_value()?)?;
             }
+            ComposeRecipientList::Multiple(recipients) if recipients.is_empty() => {
+                writeln!(w, "{}: ", name)?;
+            }
             ComposeRecipientList::Multiple(recipients) => {
                 for recipient in recipients {
                     writeln!(w, "{}: {}", name, recipient.to_header_value()?)?;
@@ -253,6 +260,43 @@ mod tests {
     }
 
     #[test]
+    fn header_placeholder_test() {
+        let mut request = get_blank_request();
+        request.compose_details.is_plain_text = true;
+        request.compose_details.plain_text_body = "Hello, world!".to_owned();
+
+        let mut buf = Vec::new();
+        let result = request.to_eml(&mut buf);
+        assert!(result.is_ok());
+        let output = String::from_utf8(buf).unwrap();
+        assert!(output.contains("From: "));
+        assert!(output.contains("To: "));
+        assert!(output.contains("Cc: "));
+        assert!(output.contains("Bcc: "));
+        assert!(output.contains("Reply-To: "));
+        assert!(output.contains("Subject: "));
+    }
+
+    #[test]
+    fn omit_header_placeholder_when_given_test() {
+        let mut request = get_blank_request();
+        request.compose_details.cc = ComposeRecipientList::Multiple(vec![
+            ComposeRecipient::Email("foo@example.com".to_owned()),
+            ComposeRecipient::Email("bar@example.com".to_owned()),
+        ]);
+        request.compose_details.is_plain_text = true;
+        request.compose_details.plain_text_body = "Hello, world!".to_owned();
+
+        let mut buf = Vec::new();
+        let result = request.to_eml(&mut buf);
+        assert!(result.is_ok());
+        let output = String::from_utf8(buf).unwrap();
+        assert_eq!(2, output.matches("Cc:").count());
+        assert!(output.contains("Cc: foo@example.com"));
+        assert!(output.contains("Cc: bar@example.com"));
+    }
+
+    #[test]
     fn merge_subject_and_body_test() {
         let mut eml = "Subject: Hello, world! \r\n\r\nThis is a test.\r\n".as_bytes();
         let mut request = get_blank_request();
@@ -309,6 +353,38 @@ mod tests {
                 }),
             ]),
             responses[0].compose_details.to
+        );
+    }
+
+    #[test]
+    fn merge_with_header_placeholder_test() {
+        let mut eml = "From: foo@example.com\r\nTo: bar@example.com\r\nCc: \r\nBcc: \r\nReply-To: another@example.com\r\n\r\nThis is a test.\r\n".as_bytes();
+        let mut request = get_blank_request();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(
+            ComposeRecipient::Email("foo@example.com".to_owned()),
+            responses[0].compose_details.from
+        );
+        assert_eq!(
+            ComposeRecipientList::Multiple(vec![ComposeRecipient::Email(
+                "bar@example.com".to_owned()
+            )]),
+            responses[0].compose_details.to
+        );
+        assert_eq!(
+            ComposeRecipientList::Multiple(vec![]),
+            responses[0].compose_details.cc
+        );
+        assert_eq!(
+            ComposeRecipientList::Multiple(vec![]),
+            responses[0].compose_details.bcc
+        );
+        assert_eq!(
+            ComposeRecipientList::Multiple(vec![ComposeRecipient::Email(
+                "another@example.com".to_owned()
+            )]),
+            responses[0].compose_details.reply_to
         );
     }
 
