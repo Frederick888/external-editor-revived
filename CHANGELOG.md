@@ -1,3 +1,23 @@
+<a name="v0.4.0"></a>
+## v0.4.0 (2022-08-03)
+
+
+#### Features
+
+* **ext:**  Tooltip for compose window button ([513bb962](https://github.com/Frederick888/external-editor-revived/commit/513bb962c795226d269d5127631f69670faedc7c))
+* **host:**
+  *  CRLF in temporary EML files ([31da04d2](https://github.com/Frederick888/external-editor-revived/commit/31da04d2c67b9b35a9bdc303bee0cf2a358bf854))
+  *  Add placeholders for absent headers ([86f59dbd](https://github.com/Frederick888/external-editor-revived/commit/86f59dbd344b521d7dce91397aa2c67335ee7e91))
+  *  Conciser help headers at the bottom ([18ef80d0](https://github.com/Frederick888/external-editor-revived/commit/18ef80d087da759f3338de516300fd92ca1ce3e2))
+  *  Skip checking patch version ([eeacaa65](https://github.com/Frederick888/external-editor-revived/commit/eeacaa65ad974b1a2fa8147f827ba9d1d688a657))
+
+#### Bug Fixes
+
+* **ext:**  Use correct identity to reply ([505393c4](https://github.com/Frederick888/external-editor-revived/commit/505393c4de00ce400ffd1d461fc6331eb7df0351))
+* **host:**  Stop unnecessarily trimming email bodies ([1692bef1](https://github.com/Frederick888/external-editor-revived/commit/1692bef15d6fb9d62323d3e35331e9421a98fb3b))
+
+
+
 <a name="v0.3.0"></a>
 ## v0.3.0 (2022-07-15)
 
