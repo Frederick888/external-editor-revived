@@ -76,7 +76,18 @@ pub struct ComposeDetails {
 }
 
 impl ComposeDetails {
+    #[cfg(not(target_os = "windows"))]
+    pub fn get_body(&self) -> String {
+        if self.is_plain_text {
+            self.plain_text_body.replace('\n', "\r\n")
+        } else {
+            self.body.replace('\n', "\r\n")
+        }
+    }
+
+    #[cfg(target_os = "windows")]
     pub fn get_body(&self) -> &str {
+        // Thunderbird under Windows already sends CRLF
         if self.is_plain_text {
             &self.plain_text_body
         } else {
@@ -325,6 +336,21 @@ mod tests {
             }
             _ => panic!("should not be ComposeRecipientList::Single"),
         }
+    }
+
+    #[test]
+    fn compose_details_crlf_body_test() {
+        let mut compose_details = get_blank_compose_details();
+        compose_details.plain_text_body = if cfg!(target_os = "windows") {
+            "Hello,\r\nworld!".to_owned()
+        } else {
+            "Hello,\nworld!".to_owned()
+        };
+
+        let body = compose_details.get_body();
+        assert_eq!(1, body.matches("\r\n").count());
+        assert_eq!(1, body.matches('\r').count());
+        assert_eq!(1, body.matches('\n').count());
     }
 
     #[test]

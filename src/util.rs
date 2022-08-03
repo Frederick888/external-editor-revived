@@ -4,6 +4,16 @@ use std::path::{Path, PathBuf};
 
 use crate::model::thunderbird::Tab;
 
+#[macro_export]
+macro_rules! writeln_crlf {
+    ($dst:expr $(,)?) => {
+        write!($dst, "\r\n")
+    };
+    ($dst:expr, $fmt:expr, $($arg:tt)*) => {
+        write!($dst, concat!($fmt, "\r\n"), $($arg)*)
+    };
+}
+
 pub fn get_temp_filename(tab: &Tab) -> PathBuf {
     let mut temp_dir = env::temp_dir();
     temp_dir.push(format!("external_editor_revived_{}.eml", tab.id));

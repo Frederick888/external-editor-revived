@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::io;
 
 use super::thunderbird::*;
+use crate::writeln_crlf;
 
 pub const MAX_BODY_LENGTH: usize = 768 * 1024;
 
@@ -51,21 +52,22 @@ impl Exchange {
     where
         W: io::Write,
     {
-        writeln!(w, "From: {}", self.compose_details.from.to_header_value()?)?;
+        writeln_crlf!(w, "From: {}", self.compose_details.from.to_header_value()?)?;
         Self::compose_recipient_list_to_eml(w, "To", &self.compose_details.to)?;
         Self::compose_recipient_list_to_eml(w, "Cc", &self.compose_details.cc)?;
         Self::compose_recipient_list_to_eml(w, "Bcc", &self.compose_details.bcc)?;
         Self::compose_recipient_list_to_eml(w, "Reply-To", &self.compose_details.reply_to)?;
-        writeln!(w, "Subject: {}", self.compose_details.subject)?;
-        writeln!(
+        writeln_crlf!(w, "Subject: {}", self.compose_details.subject)?;
+        writeln_crlf!(
             w,
             "{}: {}",
-            HEADER_SEND_ON_EXIT, self.configuration.send_on_exit
+            HEADER_SEND_ON_EXIT,
+            self.configuration.send_on_exit
         )?;
         if !self.configuration.suppress_help_headers {
             Self::write_help_headers(w)?;
         }
-        writeln!(w)?;
+        writeln_crlf!(w)?;
         write!(w, "{}", self.compose_details.get_body())?;
         Ok(())
     }
@@ -189,14 +191,14 @@ impl Exchange {
     {
         match list {
             ComposeRecipientList::Single(recipient) => {
-                writeln!(w, "{}: {}", name, recipient.to_header_value()?)?;
+                writeln_crlf!(w, "{}: {}", name, recipient.to_header_value()?)?;
             }
             ComposeRecipientList::Multiple(recipients) if recipients.is_empty() => {
-                writeln!(w, "{}: ", name)?;
+                writeln_crlf!(w, "{}: ", name)?;
             }
             ComposeRecipientList::Multiple(recipients) => {
                 for recipient in recipients {
-                    writeln!(w, "{}: {}", name, recipient.to_header_value()?)?;
+                    writeln_crlf!(w, "{}: {}", name, recipient.to_header_value()?)?;
                 }
             }
         }
@@ -208,7 +210,7 @@ impl Exchange {
         W: io::Write,
     {
         for line in HEADER_HELP_LINES {
-            writeln!(w, "{}: {}", HEADER_HELP, line)?;
+            writeln_crlf!(w, "{}: {}", HEADER_HELP, line)?;
         }
         Ok(())
     }
@@ -254,6 +256,7 @@ mod tests {
         assert!(output.contains("X-ExtEditorR-Send-On-Exit: false"));
         assert!(output.ends_with(&request.compose_details.plain_text_body));
         assert!(!output.contains(&request.compose_details.body));
+        assert_eq!(output.matches('\r').count(), output.matches('\n').count());
     }
 
     #[test]
