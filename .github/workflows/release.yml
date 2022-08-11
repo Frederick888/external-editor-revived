@@ -130,7 +130,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --locked -- -D warnings
+          args: --locked --tests -- -D warnings
 
       - name: Test
         uses: actions-rs/cargo@v1
