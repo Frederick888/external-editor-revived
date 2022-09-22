@@ -176,7 +176,7 @@ pub struct ComposeRecipientNode {
 impl EmailHeaderValue for ComposeRecipientNode {
     fn to_header_value(&self) -> Result<String> {
         let value = serde_json::to_string_pretty(&self)?;
-        Ok(value.replace(&['\n', '\r'], ""))
+        Ok(value.replace(['\n', '\r'], ""))
     }
 
     fn from_header_value(value: &str) -> Result<Self>
