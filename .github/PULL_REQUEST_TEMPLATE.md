@@ -1,5 +1,10 @@
 # Description
 
+# Changes
+<!-- === GH HISTORY FENCE === -->
+<!-- Do NOT write here! -->
+<!-- It will be filled in by GitHub Actions automatically. -->
+<!-- === GH HISTORY FENCE === -->
 
 # Checklist
 

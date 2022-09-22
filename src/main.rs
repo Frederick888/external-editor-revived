@@ -36,7 +36,7 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
     }
 
     {
-        let mut temp_file = fs::File::create(&temp_filename).map_err(|e| messaging::Error {
+        let mut temp_file = fs::File::create(temp_filename).map_err(|e| messaging::Error {
             tab: request.tab.clone(),
             title: "ExtEditorR failed to create temporary file".to_owned(),
             message: e.to_string(),
@@ -88,7 +88,7 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
     let mut response = request;
 
     {
-        let temp_file = fs::File::open(&temp_filename).map_err(|e| messaging::Error {
+        let temp_file = fs::File::open(temp_filename).map_err(|e| messaging::Error {
             tab: response.tab.clone(),
             title: "ExtEditorR failed to read from temporary file".to_owned(),
             message: util::error_message_with_path(e, temp_filename),
