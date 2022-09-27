@@ -33,10 +33,11 @@ release version:
     fi
     # host
     sed 's/^version = ".*"$/version = "{{version}}"/' -i ./Cargo.toml
+    cargo update -p external-editor-revived
+    git add ./Cargo.toml ./Cargo.lock
     just lint
     cargo test
     cargo build
-    git add ./Cargo.toml ./Cargo.lock
     # extension
     jq --indent 4 '.version = "{{version}}"' ./extension/manifest.json | sponge ./extension/manifest.json
     jq '.version = "{{version}}"' ./extension/package.json | sponge ./extension/package.json
