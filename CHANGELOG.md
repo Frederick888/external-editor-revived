@@ -1,3 +1,13 @@
+<a name="v0.4.1"></a>
+## v0.4.1 (2022-09-27)
+
+
+#### Bug Fixes
+
+* **host:**  Support both LF & CRLF under Windows ([49be80be](https://github.com/Frederick888/external-editor-revived/commit/49be80bebb976c4e18c0458c6f465ae5085bacca))
+
+
+
 <a name="v0.4.0"></a>
 ## v0.4.0 (2022-08-03)
 
