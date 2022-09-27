@@ -76,23 +76,13 @@ pub struct ComposeDetails {
 }
 
 impl ComposeDetails {
-    #[cfg(not(target_os = "windows"))]
     pub fn get_body(&self) -> String {
-        if self.is_plain_text {
-            self.plain_text_body.replace('\n', "\r\n")
-        } else {
-            self.body.replace('\n', "\r\n")
-        }
-    }
-
-    #[cfg(target_os = "windows")]
-    pub fn get_body(&self) -> &str {
-        // Thunderbird under Windows already sends CRLF
-        if self.is_plain_text {
+        let body = if self.is_plain_text {
             &self.plain_text_body
         } else {
             &self.body
-        }
+        };
+        body.replace('\r', "").replace('\n', "\r\n")
     }
 
     pub fn set_body(&mut self, body: String) {
@@ -342,6 +332,7 @@ mod tests {
     fn compose_details_crlf_body_test() {
         let mut compose_details = get_blank_compose_details();
         compose_details.plain_text_body = if cfg!(target_os = "windows") {
+            // Thunderbird 91
             "Hello,\r\nworld!".to_owned()
         } else {
             "Hello,\nworld!".to_owned()
