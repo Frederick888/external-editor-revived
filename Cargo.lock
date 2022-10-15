@@ -21,7 +21,7 @@ dependencies = [
  "anyhow",
  "serde",
  "serde_json",
- "web-ext-native-messaging",
+ "webextension-native-messaging",
 ]
 
 [[package]]
@@ -98,18 +98,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.36"
+version = "1.0.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a99cb8c4b9a8ef0e7907cd3b617cc8dc04d571c4e73c8ae403d80ac160bb122"
+checksum = "10deb33631e3c9018b9baf9dcbbc4f737320d2b576bac10f6aefa048fa407e3e"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.36"
+version = "1.0.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a891860d3c8d66fec8e73ddb3765f90082374dbaaa833407b904a94f1a7eb43"
+checksum = "982d17546b47146b28f7c22e3d08465f6b8903d0ea13c1660d9d84a6e7adcdbb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -123,10 +123,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcc811dc4066ac62f84f11307873c4850cb653bfa9b1719cee2bd2204a4bc5dd"
 
 [[package]]
-name = "web-ext-native-messaging"
-version = "0.1.0"
+name = "webextension-native-messaging"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c6bc890f32df0f87eadf15eda2e23987861323a2164fbf1705233e29f1775b2"
+checksum = "d2b651c70d995e28eef3263174a9016b2250ba9b2e226a9e7fbc7f90402c7093"
 dependencies = [
  "byteorder",
  "serde",
