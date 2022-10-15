@@ -104,7 +104,7 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
             })?;
 
         for response in responses {
-            if let Err(e) = web_ext_native_messaging::write_message(&response) {
+            if let Err(e) = webextension_native_messaging::write_message(&response) {
                 eprint!("ExtEditorR failed to send response to Thunderbird: {}", e);
             }
         }
@@ -162,14 +162,14 @@ fn main() -> anyhow::Result<()> {
     }
 
     loop {
-        let request = web_ext_native_messaging::read_message::<Exchange>()
+        let request = webextension_native_messaging::read_message::<Exchange>()
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
 
         thread::spawn(move || {
             let temp_filename = util::get_temp_filename(&request.tab);
             if let Err(e) = handle(request, &temp_filename) {
                 eprintln!("{}: {}", e.title, e.message);
-                if let Err(write_error) = web_ext_native_messaging::write_message(&e) {
+                if let Err(write_error) = webextension_native_messaging::write_message(&e) {
                     eprint!(
                         "ExtEditorR failed to send response to Thunderbird: {}",
                         write_error
