@@ -18,7 +18,7 @@ jobs:
     name: Pack MailExtension
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Zip
         run: |
           pushd ./extension
@@ -53,25 +53,23 @@ jobs:
             experimental: true
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Git Commit Hash
         id: git_commit
         run: |
-          echo "::set-output name=hash::$(git rev-parse HEAD)"
+          printf 'hash=%s\n' "$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
       - name: Cancel Previous Runs
         if: contains(matrix.os, 'ubuntu')
-        uses: styfle/cancel-workflow-action@0.10.0
+        uses: styfle/cancel-workflow-action@0.11.0
         with:
           access_token: ${{ github.token }}
 
       - name: Install Rust Toolchain
         id: rust_toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust_toolchain }}
-          default: true
-          override: true
           components: rustfmt, clippy
       - name: Add macOS Targets
         if: contains(matrix.os, 'macos')
@@ -86,41 +84,36 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.rustc_hash }}-lock-${{ hashFiles('Cargo.lock') }}-git-${{ steps.git_commit.outputs.hash }}
+          key: build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.cachekey }}-lock-${{ hashFiles('Cargo.lock') }}-git-${{ steps.git_commit.outputs.hash }}
           restore-keys: |
-            build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.rustc_hash }}-lock-${{ hashFiles('Cargo.lock') }}-
-            build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.rustc_hash }}-
+            build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.cachekey }}-lock-${{ hashFiles('Cargo.lock') }}-
+            build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.cachekey }}-
             build-${{ runner.os }}-
 
       - name: rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -- --check
+        shell: bash
+        run: |
+          cargo fmt -- --check
       - name: Clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --locked --tests -- -D warnings
+        shell: bash
+        run: |
+          cargo clippy --locked --tests -- -D warnings
 
       - name: Build (Linux, Windows)
         if: "!contains(matrix.os, 'macos')"
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --locked --release
+        shell: bash
+        run: |
+          cargo build --locked --release
       - name: Build (macOS, x86_64)
         if: contains(matrix.os, 'macos')
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --locked --release --target=x86_64-apple-darwin
+        shell: bash
+        run: |
+          cargo build --locked --release --target=x86_64-apple-darwin
       - name: Build (macOS, aarch64)
         if: contains(matrix.os, 'macos')
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --locked --release --target=aarch64-apple-darwin
+        shell: bash
+        run: |
+          cargo build --locked --release --target=aarch64-apple-darwin
       - name: macOS Universal Binary
         if: contains(matrix.os, 'macos')
         run: |
@@ -137,7 +130,6 @@ jobs:
             target/release/external-editor-revived.exe
 
       - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --locked --release
+        shell: bash
+        run: |
+          cargo test --locked --release
