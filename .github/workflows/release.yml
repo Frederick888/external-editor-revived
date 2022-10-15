@@ -14,8 +14,9 @@ jobs:
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       release_id: ${{ steps.create_release.outputs.id }}
+      is_pre: ${{ steps.release_type.outputs.is_pre }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Conventional Commit Changelog
@@ -35,12 +36,18 @@ jobs:
           echo 'CHANGELOG<<EOF' >> $GITHUB_ENV
           ./clog --from="$last_tag" --setversion="$GITHUB_REF_NAME" >> $GITHUB_ENV
           echo 'EOF' >> $GITHUB_ENV
+      - name: Determine release type
+        id: release_type
+        shell: bash
+        run: |
+          [[ "$GITHUB_REF_NAME" == *"-"* ]] && is_pre='true' || is_pre='false'
+          printf 'is_pre=%s\n' "$is_pre" >> $GITHUB_OUTPUT
       - name: Create Release
         id: create_release
         uses: ncipollo/release-action@v1
         with:
           draft: true
-          prerelease: false
+          prerelease: ${{ steps.release_type.outputs.is_pre }}
           body: ${{ env.CHANGELOG }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -49,7 +56,7 @@ jobs:
     needs: create_release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Zip
         run: |
           pushd ./extension
@@ -61,20 +68,16 @@ jobs:
       - name: Git Tag
         id: git_tag
         run: |
-          echo "::set-output name=git_tag::$GITHUB_REF_NAME"
+          printf 'git_tag=%s\n' "$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
       - name: Upload
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: ./external-editor-revived.xpi
           asset_name: external-editor-revived-${{ steps.git_tag.outputs.git_tag }}.xpi
           asset_content_type: application/zip
       - name: "Upload Hash"
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: ./external-editor-revived.xpi.sha256sum
@@ -91,22 +94,20 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Git Commit Hash
         id: git_commit
         run: |
-          echo "::set-output name=hash::$(git rev-parse HEAD)"
+          printf 'hash=%s\n' "$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
       - name: Install Windows Dependencies
         if: contains(matrix.os, 'windows')
         run: choco install zip
       - name: Install Rust Toolchain
         id: rust_toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          default: true
-          override: true
           components: rustfmt, clippy
       - name: Add macOS Targets
         if: contains(matrix.os, 'macos')
@@ -121,46 +122,40 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.rustc_hash }}-lock-${{ hashFiles('Cargo.lock') }}-git-${{ steps.git_commit.outputs.hash }}
+          key: build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.cachekey }}-lock-${{ hashFiles('Cargo.lock') }}-git-${{ steps.git_commit.outputs.hash }}
           restore-keys: |
-            build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.rustc_hash }}-lock-${{ hashFiles('Cargo.lock') }}-
-            build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.rustc_hash }}-
+            build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.cachekey }}-lock-${{ hashFiles('Cargo.lock') }}-
+            build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.cachekey }}-
             build-${{ runner.os }}-
 
       - name: rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -- --check
+        shell: bash
+        run: |
+          cargo fmt -- --check
       - name: Clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --locked --tests -- -D warnings
+        shell: bash
+        run: |
+          cargo clippy --locked --tests -- -D warnings
 
       - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --locked --release
+        shell: bash
+        run: |
+          cargo test --locked --release
       - name: Build (Linux, Windows)
         if: "!contains(matrix.os, 'macos')"
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --locked --release
+        shell: bash
+        run: |
+          cargo build --locked --release
       - name: Build (macOS, x86_64)
         if: contains(matrix.os, 'macos')
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --locked --release --target=x86_64-apple-darwin
+        shell: bash
+        run: |
+          cargo build --locked --release --target=x86_64-apple-darwin
       - name: Build (macOS, aarch64)
         if: contains(matrix.os, 'macos')
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --locked --release --target=aarch64-apple-darwin
+        shell: bash
+        run: |
+          cargo build --locked --release --target=aarch64-apple-darwin
       - name: macOS Universal Binary
         if: contains(matrix.os, 'macos')
         run: |
@@ -173,7 +168,7 @@ jobs:
         shell: bash
         run: |
           zip -j "./${{ matrix.os }}-native-messaging-host-$GITHUB_REF_NAME.zip" target/release/external-editor-revived target/release/external-editor-revived.exe
-          echo "::set-output name=filename::${{ matrix.os }}-native-messaging-host-$GITHUB_REF_NAME"
+          echo "filename=${{ matrix.os }}-native-messaging-host-$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
       - name: "Hash (Unix)"
         if: "!contains(matrix.os, 'windows')"
         run: |
@@ -186,18 +181,14 @@ jobs:
           echo "$FileHash"
           echo "$FileHash" > ${{ steps.pack_native_host.outputs.filename }}.zip.sha256sum
       - name: Upload
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: ./${{ steps.pack_native_host.outputs.filename }}.zip
           asset_name: ${{ steps.pack_native_host.outputs.filename }}.zip
           asset_content_type: application/zip
       - name: "Upload Hash"
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: ./${{ steps.pack_native_host.outputs.filename }}.zip.sha256sum
@@ -207,6 +198,7 @@ jobs:
   publish_release:
     runs-on: ubuntu-latest
     needs: [create_release, extension, messaging_host]
+    if: ${{ needs.create_release.outputs.is_pre == 'false' }}
     steps:
       - name: Publish Release
         uses: eregon/publish-release@v1
