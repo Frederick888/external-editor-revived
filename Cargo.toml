@@ -10,3 +10,6 @@ anyhow = "1.0.58"
 serde = { version = "1.0.137", features = ["derive"] }
 serde_json = "1.0.81"
 webextension-native-messaging = "1.0.1"
+
+[dev-dependencies]
+base64 = "0.13.0"

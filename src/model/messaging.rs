@@ -81,14 +81,14 @@ impl Exchange {
         self.compose_details.clear_recipients();
         self.configuration.send_on_exit = false;
 
-        let mut buf = String::new();
+        let mut buf = Vec::new();
         // read headers
         let mut unknown_headers = Vec::new();
-        while let Ok(length) = r.read_line(&mut buf) {
+        while let Ok(length) = r.read_until(b'\n', &mut buf) {
             if length == 0 {
                 break;
             }
-            let line = buf.trim();
+            let line = String::from_utf8_lossy(&buf).trim().to_owned();
             if line.is_empty() {
                 break;
             }
@@ -150,9 +150,10 @@ impl Exchange {
         self.compose_details.body.clear();
         self.compose_details.plain_text_body.clear();
         buf.clear();
-        r.read_to_string(&mut buf)?;
+        r.read_to_end(&mut buf)?;
+        let body = String::from_utf8_lossy(&buf);
         let mut chunk = String::new();
-        for c in buf.chars() {
+        for c in body.chars() {
             chunk.push(c);
             if chunk.len() > max_body_length {
                 self.compose_details.set_body(chunk.clone());
@@ -438,6 +439,35 @@ mod tests {
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
         assert!(!responses[0].configuration.send_on_exit);
+    }
+
+    #[test]
+    fn invalid_utf8_test() {
+        let eml = {
+            let mut result = "Subject: Hello\r\n\r\n".as_bytes().to_vec();
+            // https://github.com/Frederick888/external-editor-revived/issues/65#issuecomment-1276693030
+            let body_b64 = "PiB0aGlzIGNoYXJhY3RlciBjYXVzZXMgYmFkbmVzczoNCj4gICCVDQo=";
+            let body = base64::decode(body_b64).unwrap();
+            result.extend(&body);
+            result
+        };
+
+        let mut request = get_blank_request();
+        request.configuration.send_on_exit = true;
+        let responses = request.merge_from_eml(&mut &eml[..], 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert!(responses[0]
+            .compose_details
+            .plain_text_body
+            .contains("> this character causes badness:"));
+        assert_eq!(
+            2,
+            responses[0]
+                .compose_details
+                .plain_text_body
+                .matches("\r\n")
+                .count()
+        );
     }
 
     #[test]
