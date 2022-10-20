@@ -1,3 +1,13 @@
+<a name="v0.4.2"></a>
+## v0.4.2 (2022-10-20)
+
+
+#### Bug Fixes
+
+* **host:**  Fix crashes when EML has invalid UTF-8 ([c8a428d0](https://github.com/Frederick888/external-editor-revived/commit/c8a428d005b0e0c69c5302868d1e7858873c1692))
+
+
+
 <a name="v0.4.1"></a>
 ## v0.4.1 (2022-09-27)
 
