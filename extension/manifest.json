@@ -2,7 +2,7 @@
     "manifest_version": 2,
     "name": "External Editor Revived",
     "short_name": "ExtEditorR",
-    "description": "Edit emails in external editors such as Vim",
+    "description": "Edit emails in external editors such as Vim, Neovim, Emacs, etc.",
     "homepage_url": "https://github.com/Frederick888/external-editor-revived",
     "version": "0.4.2",
     "author": "Frederick Zhang",
