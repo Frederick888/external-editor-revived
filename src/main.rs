@@ -117,17 +117,16 @@ fn print_help() -> anyhow::Result<()> {
     match env::current_exe() {
         Ok(program_path) => {
             let native_app_manifest = AppManifest::new(&program_path.to_string_lossy());
-            eprintln!(
-                "Please create '{}.json' manifest file with the JSON below.",
-                native_app_manifest.name
-            );
-            eprintln!(
-                "Consult https://wiki.mozilla.org/WebExtensions/Native_Messaging for its location."
-            );
+            let app_name = native_app_manifest.name;
+            eprintln!("Please create '{app_name}.json' manifest file with the JSON below.");
             if cfg!(target_os = "macos") {
                 eprintln!(
-                    "Under macOS this is usually ~/Library/Mozilla/NativeMessagingHosts/{}.json.",
-                    native_app_manifest.name
+                    "Under macOS this is usually ~/Library/Mozilla/NativeMessagingHosts/{app_name}.json,\n\
+                    or /Library/Application Support/Mozilla/NativeMessagingHosts/{app_name}.json for global visibility."
+                );
+            } else {
+                eprintln!(
+                    "Consult https://wiki.mozilla.org/WebExtensions/Native_Messaging for its location."
                 );
             }
             eprintln!();
