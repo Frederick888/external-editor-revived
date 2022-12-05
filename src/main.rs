@@ -105,7 +105,7 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
 
         for response in responses {
             if let Err(e) = webextension_native_messaging::write_message(&response) {
-                eprint!("ExtEditorR failed to send response to Thunderbird: {}", e);
+                eprint!("ExtEditorR failed to send response to Thunderbird: {e}");
             }
         }
     }
@@ -133,7 +133,7 @@ fn print_help() -> anyhow::Result<()> {
             eprintln!();
             println!("{}", serde_json::to_string_pretty(&native_app_manifest)?);
         }
-        Err(e) => eprint!("Failed to determine program path: {}", e),
+        Err(e) => eprint!("Failed to determine program path: {e}"),
     }
     Ok(())
 }
@@ -170,10 +170,7 @@ fn main() -> anyhow::Result<()> {
             if let Err(e) = handle(request, &temp_filename) {
                 eprintln!("{}: {}", e.title, e.message);
                 if let Err(write_error) = webextension_native_messaging::write_message(&e) {
-                    eprint!(
-                        "ExtEditorR failed to send response to Thunderbird: {}",
-                        write_error
-                    );
+                    eprint!("ExtEditorR failed to send response to Thunderbird: {write_error}");
                 }
             } else if let Err(remove_error) = fs::remove_file(&temp_filename) {
                 eprint!(

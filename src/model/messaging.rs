@@ -123,11 +123,11 @@ impl Exchange {
                     HEADER_LOWER_HELP => {}
                     _ => {
                         unknown_headers.push(header_name.to_owned());
-                        eprintln!("ExtEditorR encountered unknown header {} when processing temporary file", header_name);
+                        eprintln!("ExtEditorR encountered unknown header {header_name} when processing temporary file");
                     }
                 }
             } else {
-                eprintln!("ExtEditorR failed to process header {}", line);
+                eprintln!("ExtEditorR failed to process header {line}");
             }
             buf.clear();
         }
