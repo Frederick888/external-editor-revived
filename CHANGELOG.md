@@ -1,3 +1,13 @@
+<a name="v0.4.3"></a>
+## v0.4.3 (2022-12-06)
+
+
+#### Features
+
+* **host:**  Hide manifest wiki link under macOS ([c25fe07d](https://github.com/Frederick888/external-editor-revived/commit/c25fe07d213cedc603fb9bb2836d1c08ee3846ca))
+
+
+
 <a name="v0.4.2"></a>
 ## v0.4.2 (2022-10-20)
 
