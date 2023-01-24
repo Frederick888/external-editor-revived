@@ -88,7 +88,7 @@ async function composeActionListener(tab, info) {
   if (!await messenger.composeAction.isEnabled({tabId: tab.id})) {
     return
   }
-  const settings = await browser.storage.local.get(['editor', 'shell', 'template', 'suppressHelpHeaders', 'bypassVersionCheck'])
+  const settings = await browser.storage.local.get(['editor', 'shell', 'template', 'temporaryDirectory', 'suppressHelpHeaders', 'bypassVersionCheck'])
   if (!settings.editor) {
     await createBasicNotification(
       'no-settings',
@@ -105,6 +105,7 @@ async function composeActionListener(tab, info) {
       version: manifest.version,
       shell: settings.shell,
       template: settings.template,
+      temporaryDirectory: settings.temporaryDirectory,
       sendOnExit: info.modifiers.indexOf('Shift') >= 0,
       suppressHelpHeaders: !!settings.suppressHelpHeaders,
       bypassVersionCheck: !!settings.bypassVersionCheck,

@@ -23,9 +23,14 @@
       width: 100%;
     }
 
+    #temp-dir {
+      width: 100%;
+    }
+
     #apply-row td {
       text-align: end;
     }
+
   </style>
 </head>
 
@@ -78,6 +83,15 @@
         <br />
         <span>New template available from upstream.</span>
         <input type="button" name="upstream-template-sync" id="upstream-template-sync" value="Click to sync" />
+      </td>
+    </tr>
+    <tr id="temp-dir-row">
+      <td>
+        <label for="temp-dir">Temporary directory</label>
+      </td>
+      <td>
+        <input name="temp-dir" id="temp-dir" type="text"
+          placeholder="(absolute path; leave empty to use system temporary directory)" />
       </td>
     </tr>
     <tr id="suppress-help-headers-row">

@@ -23,6 +23,7 @@ const templateTextArea = document.getElementById('template')
 const upstreamTemplateRow = document.getElementById('upstream-template-row')
 const upstreamTemplateTextArea = document.getElementById('upstream-template')
 const upstreamTemplateSyncButton = document.getElementById('upstream-template-sync')
+const temporaryDirectoryInput = document.getElementById('temp-dir')
 const suppressHelpHeadersInput = document.getElementById('suppress-help-headers')
 const bypassVersionCheckInput = document.getElementById('bypass-version-check')
 const applyButton = document.getElementById('apply')
@@ -134,6 +135,7 @@ async function saveSettings() {
   const terminal = terminalSelect.value
   const shell = editor === 'custom' ? shellInput.value : 'sh'
   const template = templateTextArea.value
+  const temporaryDirectory = temporaryDirectoryInput.value
   const suppressHelpHeaders = suppressHelpHeadersInput.checked
   const bypassVersionCheck = bypassVersionCheckInput.checked
   await browser.storage.local.set({
@@ -141,18 +143,20 @@ async function saveSettings() {
     terminal: terminal,
     shell: shell,
     template: template,
+    temporaryDirectory: temporaryDirectory,
     suppressHelpHeaders: suppressHelpHeaders,
     bypassVersionCheck: bypassVersionCheck,
   })
 }
 
 async function loadSettings() {
-  const settings = await browser.storage.local.get(['editor', 'terminal', 'shell', 'template', 'suppressHelpHeaders', 'bypassVersionCheck'])
+  const settings = await browser.storage.local.get(['editor', 'terminal', 'shell', 'template', 'temporaryDirectory', 'suppressHelpHeaders', 'bypassVersionCheck'])
   if (settings.editor) {
     editorSelect.value = settings.editor
     terminalSelect.value = settings.terminal
     shellInput.value = settings.shell
     templateTextArea.value = settings.template
+    temporaryDirectoryInput.value = settings.temporaryDirectory ?? ''
     suppressHelpHeadersInput.checked = !!settings.suppressHelpHeaders
     bypassVersionCheckInput.checked = !!settings.bypassVersionCheck
     await updateOptionsForEditor(settings.editor)

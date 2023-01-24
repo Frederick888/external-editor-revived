@@ -30,6 +30,8 @@ pub struct Configuration {
     #[serde(skip_serializing)]
     pub template: String,
     #[serde(default)]
+    pub temporary_directory: String,
+    #[serde(default)]
     pub send_on_exit: bool,
     #[serde(default)]
     pub suppress_help_headers: bool,
@@ -495,6 +497,7 @@ mod tests {
                 total: 0,
                 shell: "".to_owned(),
                 template: "".to_owned(),
+                temporary_directory: "".to_owned(),
                 send_on_exit: false,
                 suppress_help_headers: false,
                 bypass_version_check: false,
