@@ -234,6 +234,8 @@ pub struct Warning {
 
 #[cfg(test)]
 mod tests {
+    use base64::Engine;
+
     use super::*;
 
     #[test]
@@ -449,7 +451,9 @@ mod tests {
             let mut result = "Subject: Hello\r\n\r\n".as_bytes().to_vec();
             // https://github.com/Frederick888/external-editor-revived/issues/65#issuecomment-1276693030
             let body_b64 = "PiB0aGlzIGNoYXJhY3RlciBjYXVzZXMgYmFkbmVzczoNCj4gICCVDQo=";
-            let body = base64::decode(body_b64).unwrap();
+            let body = base64::engine::general_purpose::STANDARD
+                .decode(body_b64)
+                .unwrap();
             result.extend(&body);
             result
         };
