@@ -126,6 +126,10 @@ async function nativeMessagingListener(response) {
   console.debug(`${manifest.short_name} received: `, response)
   if (response.title && response.message) {
     await createBasicNotification('', response.title, response.message)
+    if (response.reset === true) {
+      delete receivedPerTab[response.tab.id]  // maybe do a safety check? but how can we recover?
+      await messenger.composeAction.enable(response.tab.id)
+    }
   } else {
     response.composeDetails.attachments = []
 
