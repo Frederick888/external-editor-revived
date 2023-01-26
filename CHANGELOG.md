@@ -1,3 +1,15 @@
+<a name="v0.5.0"></a>
+## v0.5.0 (2023-01-26)
+
+
+#### Features
+
+*   Reset compose state if error is recoverable ([34ac6cd4](https://github.com/Frederick888/external-editor-revived/commit/34ac6cd439f90428448e9a2bd7314caa5d8b4f4e))
+*   Allow customising temporary directory for EMLs ([a4106bff](https://github.com/Frederick888/external-editor-revived/commit/a4106bff3539e1001690cde573340757f12ff758))
+* **ext:**  Group options into essential/advanced sections ([faf5f5f4](https://github.com/Frederick888/external-editor-revived/commit/faf5f5f46161763faca045344468f82d4330774a))
+
+
+
 <a name="v0.4.3"></a>
 ## v0.4.3 (2022-12-06)
 
