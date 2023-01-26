@@ -222,6 +222,7 @@ impl Exchange {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Error {
     pub tab: Tab,
+    pub reset: bool,
     pub title: String,
     pub message: String,
 }

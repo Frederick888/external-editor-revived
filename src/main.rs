@@ -25,6 +25,8 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
         } else {
             return Err(messaging::Error{
                 tab: request.tab.clone(),
+                reset: false,  // users may want to enable bypass_version_check *and* reload
+                               // ExtEditorR to recover
                 title: "ExtEditorR version mismatch!".to_owned(),
                 message: format!(
                     "Thunderbird extension is {} while native messaging host is {}. The request has been discarded.",
@@ -38,6 +40,7 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
     {
         let mut temp_file = fs::File::create(temp_filename).map_err(|e| messaging::Error {
             tab: request.tab.clone(),
+            reset: true,
             title: "ExtEditorR failed to create temporary file".to_owned(),
             message: e.to_string(),
         })?;
@@ -45,6 +48,7 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
             .to_eml(&mut temp_file)
             .map_err(|e| messaging::Error {
                 tab: request.tab.clone(),
+                reset: true,
                 title: "ExtEditorR failed to write to temporary file".to_owned(),
                 message: e.to_string(),
             })?;
@@ -71,6 +75,7 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
         .output()
         .map_err(|e| messaging::Error {
             tab: request.tab.clone(),
+            reset: true,
             title: "ExtEditorR failed to start editor".to_owned(),
             message: e.to_string(),
         })?;
@@ -80,6 +85,7 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
             .to_string();
         return Err(messaging::Error {
             tab: request.tab,
+            reset: false,
             title: "ExtEditorR encountered error from external editor".to_owned(),
             message: util::error_message_with_path(stderr, temp_filename),
         });
@@ -90,6 +96,7 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
     {
         let temp_file = fs::File::open(temp_filename).map_err(|e| messaging::Error {
             tab: response.tab.clone(),
+            reset: false,
             title: "ExtEditorR failed to read from temporary file".to_owned(),
             message: util::error_message_with_path(e, temp_filename),
         })?;
@@ -99,6 +106,7 @@ fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Erro
             .merge_from_eml(&mut reader, messaging::MAX_BODY_LENGTH)
             .map_err(|e| messaging::Error {
                 tab: response.tab.clone(),
+                reset: false,
                 title: "ExtEditorR failed to process temporary file".to_owned(),
                 message: util::error_message_with_path(e, temp_filename),
             })?;
