@@ -3,6 +3,28 @@
 <head>
   <meta http-equiv="content-type" content="text/html;charset=UTF-8">
   <style type="text/css" media="screen">
+    .divider {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .divider:before,
+    .divider:after {
+      content: "";
+      border-bottom: 1px solid darkgrey;
+    }
+
+    .divider:before {
+      flex-basis: 1em;
+      margin-right: 10px
+    }
+
+    .divider:after {
+      flex: 1;
+      margin-left: 10px
+    }
+
     table td:first-child {
       width: 20%;
     }
@@ -27,14 +49,11 @@
       width: 100%;
     }
 
-    #apply-row td {
-      text-align: end;
-    }
-
   </style>
 </head>
 
 <body>
+  <strong class="divider" style="margin-top: 0.5em;">Essential</strong>
   <table>
     <tr id="editor-row">
       <td><label>Editor</label></td>
@@ -85,15 +104,6 @@
         <input type="button" name="upstream-template-sync" id="upstream-template-sync" value="Click to sync" />
       </td>
     </tr>
-    <tr id="temp-dir-row">
-      <td>
-        <label for="temp-dir">Temporary directory</label>
-      </td>
-      <td>
-        <input name="temp-dir" id="temp-dir" type="text"
-          placeholder="(absolute path; leave empty to use system temporary directory)" />
-      </td>
-    </tr>
     <tr id="suppress-help-headers-row">
       <td>
         Suppress help headers
@@ -101,6 +111,18 @@
       <td>
         <input type="checkbox" name="suppress-help-headers" id="suppress-help-headers" />
         <label for="suppress-help-headers">Don&apos;t show X-ExtEditorR-Help headers in editors</label>
+      </td>
+    </tr>
+  </table>
+  <strong class="divider" style="margin-top: 1em;">Advanced</strong>
+  <table>
+    <tr id="temp-dir-row">
+      <td>
+        <label for="temp-dir">Temporary directory</label>
+      </td>
+      <td>
+        <input name="temp-dir" id="temp-dir" type="text"
+          placeholder="(absolute path; leave empty to use system temporary directory)" />
       </td>
     </tr>
     <tr id="bypass-version-check-row">
@@ -115,14 +137,9 @@
         </label>
       </td>
     </tr>
-    <tr></tr>
-    <tr id="apply-row">
-      <td>
-      </td>
-      <td>
-        <input name="apply" id="apply" type="button" value="Apply" />
-      </td>
-    </tr>
   </table>
+  <div style="text-align: right; padding: 0 3px 3px;">
+    <input name="apply" id="apply" type="button" value="Apply" />
+  </div>
   <script src="options.js"></script>
 </body>
