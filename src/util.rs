@@ -2,7 +2,7 @@ use std::env;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 
-use crate::model::thunderbird::Tab;
+use crate::model::messaging::Exchange;
 
 #[macro_export]
 macro_rules! writeln_crlf {
@@ -14,9 +14,14 @@ macro_rules! writeln_crlf {
     };
 }
 
-pub fn get_temp_filename(tab: &Tab) -> PathBuf {
-    let mut temp_dir = env::temp_dir();
-    temp_dir.push(format!("external_editor_revived_{}.eml", tab.id));
+pub fn get_temp_filename(request: &Exchange) -> PathBuf {
+    let custom_dir = request.configuration.temporary_directory.as_str();
+    let mut temp_dir = if !custom_dir.is_empty() {
+        PathBuf::from(custom_dir)
+    } else {
+        env::temp_dir()
+    };
+    temp_dir.push(format!("external_editor_revived_{}.eml", request.tab.id));
     temp_dir
 }
 

@@ -165,7 +165,7 @@ fn main() -> anyhow::Result<()> {
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
 
         thread::spawn(move || {
-            let temp_filename = util::get_temp_filename(&request.tab);
+            let temp_filename = util::get_temp_filename(&request);
             if let Err(e) = handle(request, &temp_filename) {
                 eprintln!("{}: {}", e.title, e.message);
                 if let Err(write_error) = webextension_native_messaging::write_message(&e) {
