@@ -38,17 +38,29 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
+        target: [x86_64-unknown-linux-gnu, x86_64-unknown-linux-musl]
         rust_toolchain: [stable]
         experimental: [false]
         include:
           - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
             rust_toolchain: nightly
             experimental: true
           - os: macos-latest
+            target: x86_64-apple-darwin
+            rust_toolchain: stable
+            experimental: false
+          - os: macos-latest
+            target: x86_64-apple-darwin
             rust_toolchain: nightly
             experimental: true
           - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            rust_toolchain: stable
+            experimental: false
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
             rust_toolchain: nightly
             experimental: true
 
@@ -72,11 +84,35 @@ jobs:
         with:
           toolchain: ${{ matrix.rust_toolchain }}
           components: rustfmt, clippy
+      - name: Add Linux Targets
+        if: contains(matrix.os, 'ubuntu')
+        run: |
+          rustup target add x86_64-unknown-linux-gnu
+          rustup target add x86_64-unknown-linux-musl
       - name: Add macOS Targets
         if: contains(matrix.os, 'macos')
         run: |
           rustup target add x86_64-apple-darwin
           rustup target add aarch64-apple-darwin
+      - name: Determine Readable Target Name
+        id: readable_target
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "macos"* ]]; then
+            printf 'name=%s\n' "universal" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          case "${{ matrix.target }}" in
+            x86_64-unknown-linux-gnu)
+              printf 'name=%s\n' "gnu"  >> $GITHUB_OUTPUT
+              ;;
+            x86_64-unknown-linux-musl)
+              printf 'name=%s\n' "musl" >> $GITHUB_OUTPUT
+              ;;
+            x86_64-pc-windows-msvc)
+              printf 'name=%s\n' "msvc" >> $GITHUB_OUTPUT
+              ;;
+          esac
 
       - name: Cache
         uses: actions/cache@v3
@@ -85,9 +121,10 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.cachekey }}-lock-${{ hashFiles('Cargo.lock') }}-git-${{ steps.git_commit.outputs.hash }}
+          key: build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.cachekey }}-target-${{ steps.readable_target.outputs.name }}-lock-${{ hashFiles('Cargo.lock') }}-git-${{ steps.git_commit.outputs.hash }}
           restore-keys: |
-            build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.cachekey }}-lock-${{ hashFiles('Cargo.lock') }}-
+            build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.cachekey }}-target-${{ steps.readable_target.outputs.name }}-lock-${{ hashFiles('Cargo.lock') }}-
+            build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.cachekey }}-target-${{ steps.readable_target.outputs.name }}-
             build-${{ runner.os }}-rustc-${{ steps.rust_toolchain.outputs.cachekey }}-
             build-${{ runner.os }}-
 
@@ -98,13 +135,15 @@ jobs:
       - name: Clippy
         shell: bash
         run: |
-          cargo clippy --locked --tests -- -D warnings
+          cargo clippy --locked --tests --target=${{ matrix.target }} -- -D warnings
 
       - name: Build (Linux, Windows)
         if: "!contains(matrix.os, 'macos')"
         shell: bash
         run: |
-          cargo build --locked --release
+          cargo build --locked --release --target=${{ matrix.target }}
+          [[ "${{ matrix.os }}" == "windows"* ]] && EXT='.exe' || EXT=''
+          mv -f "target/${{ matrix.target }}/release/external-editor-revived${EXT}" "target/release/external-editor-revived${EXT}"
       - name: Build (macOS, x86_64)
         if: contains(matrix.os, 'macos')
         shell: bash
@@ -124,7 +163,7 @@ jobs:
       - name: Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.os }}-${{ matrix.rust_toolchain }}-native-messaging-host
+          name: ${{ matrix.os }}-${{ steps.readable_target.outputs.name }}-${{ matrix.rust_toolchain }}-native-messaging-host
           retention-days: 60
           path: |
             target/release/external-editor-revived
@@ -133,4 +172,4 @@ jobs:
       - name: Test
         shell: bash
         run: |
-          cargo test --locked --release
+          cargo test --locked --release --target=${{ matrix.target }}
