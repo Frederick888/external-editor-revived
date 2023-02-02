@@ -101,6 +101,9 @@ jobs:
         run: |
           printf 'hash=%s\n' "$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
+      - name: Install macOS Dependencies
+        if: contains(matrix.os, 'macos')
+        run: brew install coreutils
       - name: Install Windows Dependencies
         if: contains(matrix.os, 'windows')
         run: choco install zip
