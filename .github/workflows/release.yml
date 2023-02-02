@@ -97,6 +97,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Git Commit Hash
         id: git_commit
+        shell: bash
         run: |
           printf 'hash=%s\n' "$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
