@@ -2,7 +2,7 @@ mod model;
 mod util;
 
 use model::app_manifest::AppManifest;
-use model::messaging::{self, Exchange};
+use model::messaging::{self, Compose};
 use std::env;
 use std::fs;
 use std::io;
@@ -14,7 +14,7 @@ const TEMPLATE_TEMP_FILE_NAME: &str = "/path/to/temp.eml";
 const DEFAULT_SHELL_ARGS: &[&str] = &["-c"];
 const DEFAULT_SHELL_ARGS_MACOS: &[&str] = &["-i", "-l", "-c"];
 
-fn handle(request: Exchange, temp_filename: &Path) -> Result<(), messaging::Error> {
+fn handle(request: Compose, temp_filename: &Path) -> Result<(), messaging::Error> {
     if !util::is_extension_compatible(env!("CARGO_PKG_VERSION"), &request.configuration.version) {
         if request.configuration.bypass_version_check {
             eprintln!(
@@ -169,7 +169,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     loop {
-        let request = webextension_native_messaging::read_message::<Exchange>()
+        let request = webextension_native_messaging::read_message::<Compose>()
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
 
         thread::spawn(move || {

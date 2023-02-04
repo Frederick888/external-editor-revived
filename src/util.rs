@@ -2,7 +2,7 @@ use std::env;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 
-use crate::model::messaging::Exchange;
+use crate::model::messaging::Compose;
 
 #[macro_export]
 macro_rules! writeln_crlf {
@@ -14,7 +14,7 @@ macro_rules! writeln_crlf {
     };
 }
 
-pub fn get_temp_filename(request: &Exchange) -> PathBuf {
+pub fn get_temp_filename(request: &Compose) -> PathBuf {
     let custom_dir = request.configuration.temporary_directory.as_str();
     let mut temp_dir = if !custom_dir.is_empty() {
         PathBuf::from(custom_dir)

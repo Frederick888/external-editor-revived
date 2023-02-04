@@ -40,7 +40,7 @@ pub struct Configuration {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Exchange {
+pub struct Compose {
     pub configuration: Configuration,
     #[serde(default)]
     pub warnings: Vec<Warning>,
@@ -49,7 +49,7 @@ pub struct Exchange {
     pub compose_details: ComposeDetails,
 }
 
-impl Exchange {
+impl Compose {
     pub fn to_eml<W>(&self, w: &mut W) -> Result<()>
     where
         W: io::Write,
@@ -494,8 +494,8 @@ mod tests {
         assert!(!output.contains("X-ExtEditorR-Help"));
     }
 
-    fn get_blank_request() -> Exchange {
-        Exchange {
+    fn get_blank_request() -> Compose {
+        Compose {
             configuration: Configuration {
                 version: "0.0.0".to_owned(),
                 sequence: 0,
