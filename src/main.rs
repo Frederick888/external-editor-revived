@@ -1,20 +1,54 @@
 mod model;
+mod transport;
 mod util;
 
 use model::app_manifest::AppManifest;
-use model::messaging::{self, Compose};
+use model::messaging::{self, Compose, Exchange, Ping};
 use std::env;
 use std::fs;
 use std::io;
 use std::path::Path;
 use std::process;
 use std::thread;
+use transport::Transport;
 
 const TEMPLATE_TEMP_FILE_NAME: &str = "/path/to/temp.eml";
 const DEFAULT_SHELL_ARGS: &[&str] = &["-c"];
 const DEFAULT_SHELL_ARGS_MACOS: &[&str] = &["-i", "-l", "-c"];
 
-fn handle(request: Compose, temp_filename: &Path) -> Result<(), messaging::Error> {
+fn handle_ping<T>(mut request: Ping)
+where
+    T: transport::Transport,
+{
+    request.pong = request.ping;
+    if let Err(write_error) = T::write_message(&request) {
+        eprintln!("ExtEditorR failed to send response to Thunderbird: {write_error}");
+    }
+}
+
+fn handle_compose<T>(request: Compose)
+where
+    T: transport::Transport,
+{
+    let temp_filename = util::get_temp_filename(&request);
+    if let Err(e) = handle_eml::<T>(request, &temp_filename) {
+        eprintln!("{}: {}", e.title, e.message);
+        if let Err(write_error) = T::write_message(&e) {
+            eprintln!("ExtEditorR failed to send response to Thunderbird: {write_error}");
+        }
+    } else if let Err(remove_error) = fs::remove_file(&temp_filename) {
+        eprintln!(
+            "ExtEditorR failed to remove temporary file {}: {}",
+            temp_filename.to_string_lossy(),
+            remove_error
+        );
+    }
+}
+
+fn handle_eml<T>(request: Compose, temp_filename: &Path) -> Result<(), messaging::Error>
+where
+    T: transport::Transport,
+{
     if !util::is_extension_compatible(env!("CARGO_PKG_VERSION"), &request.configuration.version) {
         if request.configuration.bypass_version_check {
             eprintln!(
@@ -112,8 +146,8 @@ fn handle(request: Compose, temp_filename: &Path) -> Result<(), messaging::Error
             })?;
 
         for response in responses {
-            if let Err(e) = webextension_native_messaging::write_message(&response) {
-                eprint!("ExtEditorR failed to send response to Thunderbird: {e}");
+            if let Err(e) = T::write_message(&response) {
+                eprintln!("ExtEditorR failed to send response to Thunderbird: {e}");
             }
         }
     }
@@ -140,7 +174,7 @@ fn print_help() -> anyhow::Result<()> {
             eprintln!();
             println!("{}", serde_json::to_string_pretty(&native_app_manifest)?);
         }
-        Err(e) => eprint!("Failed to determine program path: {e}"),
+        Err(e) => eprintln!("Failed to determine program path: {e}"),
     }
     Ok(())
 }
@@ -168,24 +202,33 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
+    type Tr = transport::ThunderbirdTransport;
     loop {
-        let request = webextension_native_messaging::read_message::<Compose>()
+        let request = Tr::read_message::<Exchange>()
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
 
-        thread::spawn(move || {
-            let temp_filename = util::get_temp_filename(&request);
-            if let Err(e) = handle(request, &temp_filename) {
-                eprintln!("{}: {}", e.title, e.message);
-                if let Err(write_error) = webextension_native_messaging::write_message(&e) {
-                    eprint!("ExtEditorR failed to send response to Thunderbird: {write_error}");
-                }
-            } else if let Err(remove_error) = fs::remove_file(&temp_filename) {
-                eprint!(
-                    "ExtEditorR failed to remove temporary file {}: {}",
-                    temp_filename.to_string_lossy(),
-                    remove_error
-                );
-            }
+        thread::spawn(move || match request {
+            Exchange::Ping(ping) => handle_ping::<Tr>(ping),
+            Exchange::Compose(compose) => handle_compose::<Tr>(compose),
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    type MockTr = transport::MockTransport;
+
+    #[test]
+    fn ping_pong_test() {
+        let ctx = MockTr::write_message_context();
+        let ping_json = r#"{"ping": 123456}"#;
+        let ping: Ping = serde_json::from_str(ping_json).unwrap();
+
+        ctx.expect::<Ping>()
+            .withf(|p: &Ping| p.ping == 123456 && p.pong == 123456)
+            .returning(|&_| Ok(()));
+        handle_ping::<MockTr>(ping);
     }
 }

@@ -17,6 +17,21 @@ const HEADER_HELP_LINES: &[&str] = &[
     "KEEP blank line below to separate headers from body.",
 ];
 
+#[allow(clippy::large_enum_variant)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum Exchange {
+    Ping(Ping),
+    Compose(Compose),
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Ping {
+    pub ping: u64,
+    #[serde(default)]
+    pub pong: u64,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Configuration {

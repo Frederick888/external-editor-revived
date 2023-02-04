@@ -122,9 +122,23 @@ async function composeActionListener(tab, info) {
   }
 }
 
+async function nativeMessagingPing() {
+  await browser.storage.local.remove(['healthy'])
+  const request = toPlainObject({
+    ping: Date.now()
+  })
+  console.debug(`${manifest.short_name} sending: `, request)
+  // no notifications for now. only used to show the Wiki link in options.
+  port.postMessage(toPlainObject(request))
+}
+
 async function nativeMessagingListener(response) {
   console.debug(`${manifest.short_name} received: `, response)
-  if (response.title && response.message) {
+  if (response.ping && response.pong) {
+    await browser.storage.local.set({
+      healthy: response.ping === response.pong,
+    })
+  } else if (response.title && response.message) {
     await createBasicNotification('', response.title, response.message)
     if (response.reset === true) {
       delete receivedPerTab[response.tab.id]  // maybe do a safety check? but how can we recover?
@@ -221,3 +235,5 @@ messenger.browserAction.onClicked.addListener(browserActionListener)
 messenger.composeAction.onClicked.addListener(composeActionListener)
 port.onMessage.addListener(nativeMessagingListener)
 port.onDisconnect.addListener(nativeMessagingDisconnectListener)
+
+nativeMessagingPing()
