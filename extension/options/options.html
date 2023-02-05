@@ -3,6 +3,20 @@
 <head>
   <meta http-equiv="content-type" content="text/html;charset=UTF-8">
   <style type="text/css" media="screen">
+    #banner {
+      margin: 1em 0 0.5em;
+    }
+
+    #banner>span {
+      font-size: small;
+      padding: 5px;
+      background-color: lightyellow;
+      border-style: solid;
+      border-width: 1px;
+      border-color: darkgrey;
+      border-radius: 3px;
+    }
+
     .divider {
       display: flex;
       flex-direction: row;
@@ -53,6 +67,12 @@
 </head>
 
 <body>
+  <div id="banner" style="display: none;">
+    <span>
+      ⚠ The extension will NOT work by configuring it here alone! Please check out the <a
+        href="https://github.com/Frederick888/external-editor-revived/wiki">Wiki</a> for details.
+    </span>
+  </div>
   <strong class="divider" style="margin-top: 0.5em;">Essential</strong>
   <table>
     <tr id="editor-row">

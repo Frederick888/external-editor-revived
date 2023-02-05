@@ -14,6 +14,7 @@ const editors = {
 }
 const homebrewDefaultDir = '/usr/local/bin/'
 
+const banner = document.getElementById('banner')
 const editorSelect = document.getElementById('editor')
 const terminalRow = document.getElementById('terminal-row')
 const terminalSelect = document.getElementById('terminal')
@@ -150,7 +151,12 @@ async function saveSettings() {
 }
 
 async function loadSettings() {
-  const settings = await browser.storage.local.get(['editor', 'terminal', 'shell', 'template', 'temporaryDirectory', 'suppressHelpHeaders', 'bypassVersionCheck'])
+  const settings = await browser.storage.local.get(['healthy', 'editor', 'terminal', 'shell', 'template', 'temporaryDirectory', 'suppressHelpHeaders', 'bypassVersionCheck'])
+  if (settings.healthy === true) {
+    hideElement(banner)
+  } else {
+    showElement(banner)
+  }
   if (settings.editor) {
     editorSelect.value = settings.editor
     terminalSelect.value = settings.terminal
