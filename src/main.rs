@@ -216,19 +216,47 @@ fn main() -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Mutex;
+
     use super::*;
+    use model::messaging::tests::get_blank_compose;
 
     type MockTr = transport::MockTransport;
+    static WRITE_MESSAGE_CONTEXT_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn ping_pong_test() {
-        let ctx = MockTr::write_message_context();
         let ping_json = r#"{"ping": 123456}"#;
         let ping: Ping = serde_json::from_str(ping_json).unwrap();
 
+        let _guard = WRITE_MESSAGE_CONTEXT_LOCK.lock().unwrap();
+        let ctx = MockTr::write_message_context();
         ctx.expect::<Ping>()
             .withf(|p: &Ping| p.ping == 123456 && p.pong == 123456)
             .returning(|&_| Ok(()));
         handle_ping::<MockTr>(ping);
+        ctx.checkpoint();
+    }
+
+    #[test]
+    fn echo_compose_test() {
+        let mut compose = get_blank_compose();
+        compose.configuration.version = env!("CARGO_PKG_VERSION").to_owned();
+        compose.configuration.shell = "sh".to_string();
+        compose.configuration.template = r#"cat "/path/to/temp.eml""#.to_owned();
+        compose.configuration.temporary_directory = ".".to_owned();
+        compose.tab.id = 1;
+        compose.compose_details.plain_text_body = "Hello, world!\r\n".to_owned();
+
+        let _guard = WRITE_MESSAGE_CONTEXT_LOCK.lock().unwrap();
+        let ctx = MockTr::write_message_context();
+        ctx.expect::<Compose>()
+            .withf(|c: &Compose| {
+                c.compose_details.plain_text_body == "Hello, world!\r\n"
+                    && c.configuration.total == 1
+            })
+            .returning(|&_| Ok(()));
+        handle_compose::<MockTr>(compose);
+        ctx.checkpoint();
     }
 }

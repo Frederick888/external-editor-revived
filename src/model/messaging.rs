@@ -249,14 +249,14 @@ pub struct Warning {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use base64::Engine;
 
     use super::*;
 
     #[test]
     fn write_to_eml_test() {
-        let mut request = get_blank_request();
+        let mut request = get_blank_compose();
         request.compose_details.cc = ComposeRecipientList::Multiple(vec![
             ComposeRecipient::Email("foo@example.com".to_owned()),
             ComposeRecipient::Email("bar@example.com".to_owned()),
@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn header_placeholder_test() {
-        let mut request = get_blank_request();
+        let mut request = get_blank_compose();
         request.compose_details.is_plain_text = true;
         request.compose_details.plain_text_body = "Hello, world!".to_owned();
 
@@ -300,7 +300,7 @@ mod tests {
 
     #[test]
     fn omit_header_placeholder_when_given_test() {
-        let mut request = get_blank_request();
+        let mut request = get_blank_compose();
         request.compose_details.cc = ComposeRecipientList::Multiple(vec![
             ComposeRecipient::Email("foo@example.com".to_owned()),
             ComposeRecipient::Email("bar@example.com".to_owned()),
@@ -320,7 +320,7 @@ mod tests {
     #[test]
     fn merge_subject_and_body_test() {
         let mut eml = "Subject: Hello, world! \r\n\r\nThis is a test.\r\n".as_bytes();
-        let mut request = get_blank_request();
+        let mut request = get_blank_compose();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
         assert!(responses[0].warnings.is_empty());
@@ -334,7 +334,7 @@ mod tests {
     #[test]
     fn merge_from_and_to_test() {
         let mut eml = "From: foo@example.com\r\nTo: foo@instance.com\r\nTo: {\"id\":\"bar\",\"type\":\"mailingList\"}\r\n\r\nThis is a test.\r\n".as_bytes();
-        let mut request = get_blank_request();
+        let mut request = get_blank_compose();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
         assert!(responses[0].warnings.is_empty());
@@ -357,7 +357,7 @@ mod tests {
     #[test]
     fn merge_from_and_to_lower_cases_test() {
         let mut eml = "from: foo@example.com\r\nto: foo@instance.com\r\nTo: {\"id\":\"bar\",\"type\":\"mailingList\"}\r\n\r\nThis is a test.\r\n".as_bytes();
-        let mut request = get_blank_request();
+        let mut request = get_blank_compose();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
         assert!(responses[0].warnings.is_empty());
@@ -380,7 +380,7 @@ mod tests {
     #[test]
     fn merge_with_header_placeholder_test() {
         let mut eml = "From: foo@example.com\r\nTo: bar@example.com\r\nCc: \r\nBcc: \r\nReply-To: another@example.com\r\n\r\nThis is a test.\r\n".as_bytes();
-        let mut request = get_blank_request();
+        let mut request = get_blank_compose();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
         assert_eq!(
@@ -413,7 +413,7 @@ mod tests {
     fn chunked_response_test() {
         let mut eml =
             "From: foo@example.com\r\n\r\nHello, world! Hello, world! Hello!\r\n".as_bytes();
-        let mut request = get_blank_request();
+        let mut request = get_blank_compose();
         let responses = request.merge_from_eml(&mut eml, 13).unwrap();
         assert_eq!(3, responses.len());
         assert_eq!(
@@ -430,7 +430,7 @@ mod tests {
     #[test]
     fn merge_send_on_exit_test() {
         let mut eml = "X-ExtEditorR-Send-On-Exit: true\r\n\r\nThis is a test.\r\n".as_bytes();
-        let mut request = get_blank_request();
+        let mut request = get_blank_compose();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
         assert!(responses[0].configuration.send_on_exit);
@@ -439,7 +439,7 @@ mod tests {
     #[test]
     fn unknown_headers_test() {
         let mut eml = "Foo: hello\r\nX-ExtEditorR-Send-On-Exit: true\r\nBar: world\r\n\r\nThis is a test.\r\n".as_bytes();
-        let mut request = get_blank_request();
+        let mut request = get_blank_compose();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
         assert_eq!(1, responses[0].warnings.len());
@@ -454,7 +454,7 @@ mod tests {
     #[test]
     fn delete_send_on_exit_header_test() {
         let mut eml = "Subject: Hello\r\n\r\nThis is a test.\r\n".as_bytes();
-        let mut request = get_blank_request();
+        let mut request = get_blank_compose();
         request.configuration.send_on_exit = true;
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
@@ -474,7 +474,7 @@ mod tests {
             result
         };
 
-        let mut request = get_blank_request();
+        let mut request = get_blank_compose();
         request.configuration.send_on_exit = true;
         let responses = request.merge_from_eml(&mut &eml[..], 512).unwrap();
         assert_eq!(1, responses.len());
@@ -494,7 +494,7 @@ mod tests {
 
     #[test]
     fn help_headers_test() {
-        let mut request = get_blank_request();
+        let mut request = get_blank_compose();
         let mut buf = Vec::new();
         let result = request.to_eml(&mut buf);
         assert!(result.is_ok());
@@ -509,7 +509,7 @@ mod tests {
         assert!(!output.contains("X-ExtEditorR-Help"));
     }
 
-    fn get_blank_request() -> Compose {
+    pub fn get_blank_compose() -> Compose {
         Compose {
             configuration: Configuration {
                 version: "0.0.0".to_owned(),
