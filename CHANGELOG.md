@@ -1,3 +1,14 @@
+<a name="v0.6.0"></a>
+## v0.6.0 (2023-02-10)
+
+
+#### Features
+
+*   Run a messaging host health check upon start ([4d5545a6](https://github.com/Frederick888/external-editor-revived/commit/4d5545a6237991b6f17b391dfb3c23f4ea57afc2))
+* **ext:**  Show a wiki banner in options if unhealthy ([1419957c](https://github.com/Frederick888/external-editor-revived/commit/1419957cc447363ba5a0111f75565044675e11d4))
+
+
+
 <a name="v0.5.0"></a>
 ## v0.5.0 (2023-01-26)
 
