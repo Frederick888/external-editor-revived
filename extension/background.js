@@ -124,9 +124,9 @@ async function composeActionListener(tab, info) {
 
 async function nativeMessagingPing() {
   await browser.storage.local.remove(['healthy'])
-  const request = toPlainObject({
+  const request = {
     ping: Date.now()
-  })
+  }
   console.debug(`${manifest.short_name} sending: `, request)
   // no notifications for now. only used to show the Wiki link in options.
   port.postMessage(toPlainObject(request))
