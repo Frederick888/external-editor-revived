@@ -2,6 +2,7 @@ set shell := ["bash", "+u", "-c"]
 
 lint:
     cargo fmt -- --check
+    cargo clippy --locked -- -D warnings
     cargo clippy --locked --tests -- -D warnings
 
 macos_uni:
