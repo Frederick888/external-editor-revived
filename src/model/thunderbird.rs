@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use serde::{Deserialize, Serialize};
+use serde::{de::Visitor, Deserialize, Serialize};
 
 pub trait EmailHeaderValue {
     fn to_header_value(&self) -> Result<String>;
@@ -73,6 +73,12 @@ pub struct ComposeDetails {
     #[serde(rename = "plainTextBody", skip_serializing_if = "String::is_empty")]
     pub plain_text_body: String,
     pub attachments: Vec<ComposeAttachment>,
+    #[serde(
+        default,
+        rename = "attachVCard",
+        skip_serializing_if = "TrackedOptionBool::is_unchanged"
+    )]
+    pub attach_vcard: TrackedOptionBool,
 }
 
 impl ComposeDetails {
@@ -134,6 +140,69 @@ impl ComposeDetails {
                 self.reply_to = ComposeRecipientList::Multiple(vec![r.clone(), recipient]);
             }
             ComposeRecipientList::Multiple(l) => l.push(recipient),
+        }
+    }
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct TrackedOptionBool {
+    pub inner: Option<bool>,
+    changed: bool,
+}
+
+impl TrackedOptionBool {
+    pub fn new(value: bool) -> Self {
+        Self {
+            inner: Some(value),
+            changed: false,
+        }
+    }
+
+    pub fn set(&mut self, value: bool) {
+        self.inner = Some(value);
+        self.changed = true;
+    }
+
+    pub fn is_unchanged(&self) -> bool {
+        !self.changed
+    }
+}
+
+struct TrackedOptionBoolVisitor;
+
+impl<'de> Visitor<'de> for TrackedOptionBoolVisitor {
+    type Value = TrackedOptionBool;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a boolean")
+    }
+
+    fn visit_bool<E>(self, v: bool) -> std::result::Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(TrackedOptionBool::new(v))
+    }
+}
+
+impl<'de> Deserialize<'de> for TrackedOptionBool {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let visitor = TrackedOptionBoolVisitor {};
+        deserializer.deserialize_bool(visitor)
+    }
+}
+
+impl Serialize for TrackedOptionBool {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self.inner {
+            Some(v) => serializer.serialize_bool(v),
+            None => serializer.serialize_none(), // should be unreachable
         }
     }
 }
@@ -385,6 +454,45 @@ mod tests {
         }
     }
 
+    #[test]
+    fn tracked_option_bool_test() {
+        let mut tracked_option_bool = TrackedOptionBool::default();
+        assert!(tracked_option_bool.is_unchanged());
+        assert!(tracked_option_bool.inner.is_none());
+
+        tracked_option_bool.set(false);
+        assert!(!tracked_option_bool.is_unchanged());
+        assert!(!tracked_option_bool.inner.unwrap());
+        tracked_option_bool.set(true);
+        assert!(!tracked_option_bool.is_unchanged());
+        assert!(tracked_option_bool.inner.unwrap());
+    }
+
+    #[test]
+    fn tracked_option_bool_serde_test() {
+        #[derive(Debug, Deserialize, Serialize)]
+        struct TrackedOptionBoolWrapper {
+            #[serde(default, skip_serializing_if = "TrackedOptionBool::is_unchanged")]
+            v: TrackedOptionBool,
+        }
+        let mut wrapper: TrackedOptionBoolWrapper = serde_json::from_str(r#"{"v": true}"#).unwrap();
+        assert!(wrapper.v.inner.is_some());
+        assert!(wrapper.v.inner.unwrap());
+        assert!(wrapper.v.is_unchanged());
+        let json = serde_json::to_string(&wrapper).unwrap();
+        assert_eq!("{}", json.as_str());
+
+        wrapper.v.set(true);
+        assert!(wrapper.v.inner.unwrap());
+        assert!(!wrapper.v.is_unchanged());
+        let json = serde_json::to_string(&wrapper).unwrap();
+        assert_eq!(r#"{"v":true}"#, json.as_str());
+
+        let wrapper: TrackedOptionBoolWrapper = serde_json::from_str("{}").unwrap();
+        assert!(wrapper.v.inner.is_none());
+        assert!(wrapper.v.is_unchanged());
+    }
+
     fn get_blank_compose_details() -> ComposeDetails {
         ComposeDetails {
             from: ComposeRecipient::Email("someone@example.com".to_owned()),
@@ -403,6 +511,7 @@ mod tests {
             body: "".to_owned(),
             plain_text_body: "".to_owned(),
             attachments: Vec::new(),
+            attach_vcard: TrackedOptionBool::default(),
         }
     }
 }

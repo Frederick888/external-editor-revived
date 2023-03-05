@@ -7,6 +7,8 @@ use crate::writeln_crlf;
 
 pub const MAX_BODY_LENGTH: usize = 768 * 1024;
 
+const HEADER_ATTACH_VCARD: &str = "X-ExtEditorR-Attach-vCard";
+const HEADER_LOWER_ATTACH_VCARD: &str = "x-exteditorr-attach-vcard"; // cspell: disable-line
 const HEADER_SEND_ON_EXIT: &str = "X-ExtEditorR-Send-On-Exit";
 const HEADER_LOWER_SEND_ON_EXIT: &str = "x-exteditorr-send-on-exit"; // cspell: disable-line
 const HEADER_HELP: &str = "X-ExtEditorR-Help";
@@ -14,6 +16,8 @@ const HEADER_LOWER_HELP: &str = "x-exteditorr-help"; // cspell: disable-line
 const HEADER_HELP_LINES: &[&str] = &[
     "Use one address per `To/Cc/Bcc/Reply-To` header",
     "(e.g. two recipients require two `To:` headers).",
+    "Remove brackets from `X-ExtEditorR-Attach-vCard`",
+    "to override identity's default setting.",
     "KEEP blank line below to separate headers from body.",
 ];
 
@@ -75,6 +79,9 @@ impl Compose {
         Self::compose_recipient_list_to_eml(w, "Bcc", &self.compose_details.bcc)?;
         Self::compose_recipient_list_to_eml(w, "Reply-To", &self.compose_details.reply_to)?;
         writeln_crlf!(w, "Subject: {}", self.compose_details.subject)?;
+        if let Some(attach_vcard) = self.compose_details.attach_vcard.inner {
+            writeln_crlf!(w, "{}: [{}]", HEADER_ATTACH_VCARD, attach_vcard)?;
+        }
         writeln_crlf!(
             w,
             "{}: {}",
@@ -134,6 +141,19 @@ impl Compose {
                         .compose_details
                         .add_reply_to(ComposeRecipient::from_header_value(header_value)?),
                     "subject" => self.compose_details.subject = header_value.to_string(),
+                    HEADER_LOWER_ATTACH_VCARD => match header_value {
+                        "true" => self.compose_details.attach_vcard.set(true),
+                        "false" => self.compose_details.attach_vcard.set(false),
+                        "[true]" | "[false]" => {}
+                        _ => {
+                            let warning = format!("ExtEditorR failed to parse {HEADER_ATTACH_VCARD} value: {header_value}");
+                            eprintln!("{warning}");
+                            self.warnings.push(Warning {
+                                title: format!("Invalid {HEADER_ATTACH_VCARD}"),
+                                message: warning,
+                            });
+                        }
+                    },
                     HEADER_LOWER_SEND_ON_EXIT => {
                         self.configuration.send_on_exit = header_value == "true"
                     }
@@ -148,7 +168,7 @@ impl Compose {
             }
             buf.clear();
         }
-        // warning for unknown headers; also disable send-on-exit
+        // warning for unknown headers
         if !unknown_headers.is_empty() {
             let mut message = "ExtEditorR did not recognise the following headers:\n".to_string();
             message += &unknown_headers
@@ -161,6 +181,9 @@ impl Compose {
                 message,
             };
             self.warnings.push(warning);
+        }
+        // disable send-on-exit if there are warnings
+        if !self.warnings.is_empty() {
             self.configuration.send_on_exit = false;
         }
         // read body
@@ -274,6 +297,7 @@ pub mod tests {
         assert!(output.contains("Cc: foo@example.com"));
         assert!(output.contains("Cc: bar@example.com"));
         assert!(output.contains(&format!("Subject: {}", request.compose_details.subject)));
+        assert!(!output.contains(&format!("{HEADER_ATTACH_VCARD}:")));
         assert!(output.contains("X-ExtEditorR-Send-On-Exit: false"));
         assert!(output.ends_with(&request.compose_details.plain_text_body));
         assert!(!output.contains(&request.compose_details.body));
@@ -428,6 +452,44 @@ pub mod tests {
     }
 
     #[test]
+    fn attach_vcard_test() {
+        let mut request = get_blank_compose();
+        request.compose_details.attach_vcard = TrackedOptionBool::new(false);
+
+        let mut buf = Vec::new();
+        let result = request.to_eml(&mut buf);
+        assert!(result.is_ok());
+        let output = String::from_utf8(buf).unwrap();
+        assert!(output.contains("X-ExtEditorR-Attach-vCard: [false]"));
+
+        let mut eml = "X-ExtEditorR-Attach-vCard: [false]\r\n\r\nThis is a test.\r\n".as_bytes();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert!(responses[0].compose_details.attach_vcard.is_unchanged());
+        assert!(!responses[0].compose_details.attach_vcard.inner.unwrap());
+
+        let mut eml = "X-ExtEditorR-Attach-vCard: true\r\n\r\nThis is a test.\r\n".as_bytes();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert!(!responses[0].compose_details.attach_vcard.is_unchanged());
+        assert!(responses[0].compose_details.attach_vcard.inner.unwrap());
+
+        let mut eml = "X-ExtEditorR-Attach-vCard: yes\r\n\r\nThis is a test.\r\n".as_bytes();
+        request.compose_details.attach_vcard = TrackedOptionBool::new(false);
+        request.configuration.send_on_exit = true;
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert!(responses[0].compose_details.attach_vcard.is_unchanged());
+        assert!(!responses[0].compose_details.attach_vcard.inner.unwrap());
+        assert!(!responses[0].configuration.send_on_exit);
+        assert_eq!(1, responses[0].warnings.len());
+        assert_eq!(
+            "Invalid X-ExtEditorR-Attach-vCard",
+            &responses[0].warnings[0].title
+        );
+    }
+
+    #[test]
     fn merge_send_on_exit_test() {
         let mut eml = "X-ExtEditorR-Send-On-Exit: true\r\n\r\nThis is a test.\r\n".as_bytes();
         let mut request = get_blank_compose();
@@ -552,6 +614,7 @@ pub mod tests {
                 body: "".to_owned(),
                 plain_text_body: "".to_owned(),
                 attachments: Vec::new(),
+                attach_vcard: TrackedOptionBool::default(),
             },
         }
     }
