@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::{io, str::FromStr};
 
@@ -149,19 +149,11 @@ impl Compose {
                     HEADER_LOWER_PRIORITY => {
                         self.compose_details.priority = Some(Priority::from_str(header_value)?)
                     }
-                    HEADER_LOWER_ATTACH_VCARD => match header_value {
-                        "true" => self.compose_details.attach_vcard.set(true),
-                        "false" => self.compose_details.attach_vcard.set(false),
-                        "[true]" | "[false]" => {}
-                        _ => {
-                            let warning = format!("ExtEditorR failed to parse {HEADER_ATTACH_VCARD} value: {header_value}");
-                            eprintln!("{warning}");
-                            self.warnings.push(Warning {
-                                title: format!("Invalid {HEADER_ATTACH_VCARD}"),
-                                message: warning,
-                            });
+                    HEADER_LOWER_ATTACH_VCARD => {
+                        if let Some(attach_vcard) = Self::parse_attach_vcard(header_value)? {
+                            self.compose_details.attach_vcard.set(attach_vcard);
                         }
-                    },
+                    }
                     HEADER_LOWER_SEND_ON_EXIT => {
                         self.configuration.send_on_exit = header_value == "true"
                     }
@@ -262,6 +254,20 @@ impl Compose {
             writeln_crlf!(w, "{}: {}", HEADER_HELP, line)?;
         }
         Ok(())
+    }
+
+    fn parse_attach_vcard(header_value: &str) -> Result<Option<bool>> {
+        match header_value {
+            "true" => Ok(Some(true)),
+            "false" => Ok(Some(false)),
+            "[true]" | "[false]" => Ok(None),
+            _ => {
+                let message = format!(
+                    "ExtEditorR failed to parse {HEADER_ATTACH_VCARD} value: {header_value}"
+                );
+                Err(anyhow!(message))
+            }
+        }
     }
 }
 
@@ -507,16 +513,12 @@ pub mod tests {
         let mut eml = "X-ExtEditorR-Attach-vCard: yes\r\n\r\nThis is a test.\r\n".as_bytes();
         request.compose_details.attach_vcard = TrackedOptionBool::new(false);
         request.configuration.send_on_exit = true;
-        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
-        assert_eq!(1, responses.len());
-        assert!(responses[0].compose_details.attach_vcard.is_unchanged());
-        assert!(!responses[0].compose_details.attach_vcard.inner.unwrap());
-        assert!(!responses[0].configuration.send_on_exit);
-        assert_eq!(1, responses[0].warnings.len());
-        assert_eq!(
-            "Invalid X-ExtEditorR-Attach-vCard",
-            &responses[0].warnings[0].title
-        );
+        let responses = request.merge_from_eml(&mut eml, 512);
+        assert!(responses.is_err());
+        let err = responses.unwrap_err();
+        assert!(err
+            .to_string()
+            .contains("ExtEditorR failed to parse X-ExtEditorR-Attach-vCard value: yes"));
     }
 
     #[test]
