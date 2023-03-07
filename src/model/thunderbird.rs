@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use serde::{de::Visitor, Deserialize, Serialize};
+use strum::{Display, EnumString};
 
 pub trait EmailHeaderValue {
     fn to_header_value(&self) -> Result<String>;
@@ -72,6 +73,8 @@ pub struct ComposeDetails {
     pub body: String,
     #[serde(rename = "plainTextBody", skip_serializing_if = "String::is_empty")]
     pub plain_text_body: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<Priority>,
     pub attachments: Vec<ComposeAttachment>,
     #[serde(
         default,
@@ -207,6 +210,17 @@ impl Serialize for TrackedOptionBool {
     }
 }
 
+#[derive(Clone, Display, Debug, PartialEq, Eq, Deserialize, Serialize, EnumString)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase", ascii_case_insensitive)]
+pub enum Priority {
+    Lowest,
+    Low,
+    Normal,
+    High,
+    Highest,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ComposeType {
@@ -300,7 +314,7 @@ pub enum Newsgroups {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
 
     #[test]
@@ -493,7 +507,7 @@ mod tests {
         assert!(wrapper.v.is_unchanged());
     }
 
-    fn get_blank_compose_details() -> ComposeDetails {
+    pub fn get_blank_compose_details() -> ComposeDetails {
         ComposeDetails {
             from: ComposeRecipient::Email("someone@example.com".to_owned()),
             to: ComposeRecipientList::Single(ComposeRecipient::Email(
@@ -511,6 +525,7 @@ mod tests {
             body: "".to_owned(),
             plain_text_body: "".to_owned(),
             attachments: Vec::new(),
+            priority: None,
             attach_vcard: TrackedOptionBool::default(),
         }
     }

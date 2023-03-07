@@ -1,12 +1,14 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::io;
+use std::{io, str::FromStr};
 
 use super::thunderbird::*;
 use crate::writeln_crlf;
 
 pub const MAX_BODY_LENGTH: usize = 768 * 1024;
 
+const HEADER_PRIORITY: &str = "X-ExtEditorR-Priority";
+const HEADER_LOWER_PRIORITY: &str = "x-exteditorr-priority"; // cspell: disable-line
 const HEADER_ATTACH_VCARD: &str = "X-ExtEditorR-Attach-vCard";
 const HEADER_LOWER_ATTACH_VCARD: &str = "x-exteditorr-attach-vcard"; // cspell: disable-line
 const HEADER_SEND_ON_EXIT: &str = "X-ExtEditorR-Send-On-Exit";
@@ -79,6 +81,9 @@ impl Compose {
         Self::compose_recipient_list_to_eml(w, "Bcc", &self.compose_details.bcc)?;
         Self::compose_recipient_list_to_eml(w, "Reply-To", &self.compose_details.reply_to)?;
         writeln_crlf!(w, "Subject: {}", self.compose_details.subject)?;
+        if let Some(ref priority) = self.compose_details.priority {
+            writeln_crlf!(w, "{}: {}", HEADER_PRIORITY, priority)?;
+        }
         if let Some(attach_vcard) = self.compose_details.attach_vcard.inner {
             writeln_crlf!(w, "{}: [{}]", HEADER_ATTACH_VCARD, attach_vcard)?;
         }
@@ -141,6 +146,9 @@ impl Compose {
                         .compose_details
                         .add_reply_to(ComposeRecipient::from_header_value(header_value)?),
                     "subject" => self.compose_details.subject = header_value.to_string(),
+                    HEADER_LOWER_PRIORITY => {
+                        self.compose_details.priority = Some(Priority::from_str(header_value)?)
+                    }
                     HEADER_LOWER_ATTACH_VCARD => match header_value {
                         "true" => self.compose_details.attach_vcard.set(true),
                         "false" => self.compose_details.attach_vcard.set(false),
@@ -276,6 +284,7 @@ pub mod tests {
     use base64::Engine;
 
     use super::*;
+    use crate::model::thunderbird::tests::get_blank_compose_details;
 
     #[test]
     fn write_to_eml_test() {
@@ -298,6 +307,7 @@ pub mod tests {
         assert!(output.contains("Cc: bar@example.com"));
         assert!(output.contains(&format!("Subject: {}", request.compose_details.subject)));
         assert!(!output.contains(&format!("{HEADER_ATTACH_VCARD}:")));
+        assert!(!output.contains(&format!("{HEADER_PRIORITY}:")));
         assert!(output.contains("X-ExtEditorR-Send-On-Exit: false"));
         assert!(output.ends_with(&request.compose_details.plain_text_body));
         assert!(!output.contains(&request.compose_details.body));
@@ -452,6 +462,26 @@ pub mod tests {
     }
 
     #[test]
+    fn merge_priority_test() {
+        let mut request = get_blank_compose();
+        request.compose_details.priority = Some(Priority::Normal);
+
+        let mut buf = Vec::new();
+        let result = request.to_eml(&mut buf);
+        assert!(result.is_ok());
+        let output = String::from_utf8(buf).unwrap();
+        assert!(output.contains("X-ExtEditorR-Priority: normal"));
+
+        let mut eml = "X-ExtEditorR-Priority: high\r\n\r\nThis is a test.\r\n".as_bytes();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(
+            &Priority::High,
+            responses[0].compose_details.priority.as_ref().unwrap()
+        );
+    }
+
+    #[test]
     fn attach_vcard_test() {
         let mut request = get_blank_compose();
         request.compose_details.attach_vcard = TrackedOptionBool::new(false);
@@ -597,25 +627,7 @@ pub mod tests {
                 tab_type: TabType::MessageCompose,
                 mail_tab: false,
             },
-            compose_details: ComposeDetails {
-                from: ComposeRecipient::Email("someone@example.com".to_owned()),
-                to: ComposeRecipientList::Single(ComposeRecipient::Email(
-                    "someone@example.com".to_owned(),
-                )),
-                cc: ComposeRecipientList::Multiple(Vec::new()),
-                bcc: ComposeRecipientList::Multiple(Vec::new()),
-                compose_type: ComposeType::New,
-                related_message_id: None,
-                reply_to: ComposeRecipientList::Multiple(Vec::new()),
-                follow_up_to: ComposeRecipientList::Multiple(Vec::new()),
-                newsgroups: Newsgroups::Multiple(Vec::new()),
-                subject: "".to_owned(),
-                is_plain_text: true,
-                body: "".to_owned(),
-                plain_text_body: "".to_owned(),
-                attachments: Vec::new(),
-                attach_vcard: TrackedOptionBool::default(),
-            },
+            compose_details: get_blank_compose_details(),
         }
     }
 }
