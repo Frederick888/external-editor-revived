@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use serde::{de::Visitor, Deserialize, Serialize};
+use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
 use strum::{Display, EnumString};
 
 pub trait EmailHeaderValue {
@@ -67,6 +67,13 @@ pub struct ComposeDetails {
     pub follow_up_to: ComposeRecipientList,
     pub newsgroups: Newsgroups,
     pub subject: String,
+    #[serde(
+        default,
+        rename = "deliveryFormat",
+        deserialize_with = "deserialize_some",
+        skip_serializing_if = "is_none_nested"
+    )]
+    pub delivery_format: Option<Option<DeliveryFormat>>,
     #[serde(rename = "isPlainText")]
     pub is_plain_text: bool,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -213,6 +220,16 @@ impl Serialize for TrackedOptionBool {
 #[derive(Clone, Display, Debug, PartialEq, Eq, Deserialize, Serialize, EnumString)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase", ascii_case_insensitive)]
+pub enum DeliveryFormat {
+    Auto,
+    PlainText,
+    Html,
+    Both,
+}
+
+#[derive(Clone, Display, Debug, PartialEq, Eq, Deserialize, Serialize, EnumString)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase", ascii_case_insensitive)]
 pub enum Priority {
     Lowest,
     Low,
@@ -311,6 +328,20 @@ pub enum ComposeRecipientList {
 pub enum Newsgroups {
     Single(String),
     Multiple(Vec<String>),
+}
+
+// https://github.com/serde-rs/serde/issues/984#issuecomment-314143738
+// Any value that is present is considered Some value, including null.
+fn deserialize_some<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    Deserialize::deserialize(deserializer).map(Some)
+}
+
+fn is_none_nested<T>(v: &Option<Option<T>>) -> bool {
+    matches!(v, None | Some(None))
 }
 
 #[cfg(test)]
@@ -469,6 +500,33 @@ pub mod tests {
     }
 
     #[test]
+    fn compose_details_delivery_format_test() {
+        let mut compose_details = get_blank_compose_details();
+        compose_details.body = "<html>".to_owned();
+        compose_details.plain_text_body = "hello, world!".to_owned();
+        let json = serde_json::to_string(&compose_details).unwrap();
+        assert!(!json.contains("deliveryFormat"));
+
+        compose_details = serde_json::from_str(&json).unwrap();
+        assert_eq!(None, compose_details.delivery_format);
+
+        compose_details.delivery_format = Some(None);
+        let json = serde_json::to_string(&compose_details).unwrap();
+        assert!(!json.contains("deliveryFormat"));
+
+        let json = json[..json.len() - 1].to_string() + r#","deliveryFormat":"plaintext"}"#;
+        compose_details = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            Some(Some(DeliveryFormat::PlainText)),
+            compose_details.delivery_format
+        );
+
+        compose_details.delivery_format = Some(Some(DeliveryFormat::Html));
+        let json = serde_json::to_string(&compose_details).unwrap();
+        assert!(json.contains(r#""deliveryFormat":"html""#));
+    }
+
+    #[test]
     fn tracked_option_bool_test() {
         let mut tracked_option_bool = TrackedOptionBool::default();
         assert!(tracked_option_bool.is_unchanged());
@@ -521,6 +579,7 @@ pub mod tests {
             follow_up_to: ComposeRecipientList::Multiple(Vec::new()),
             newsgroups: Newsgroups::Multiple(Vec::new()),
             subject: "".to_owned(),
+            delivery_format: None,
             is_plain_text: true,
             body: "".to_owned(),
             plain_text_body: "".to_owned(),
