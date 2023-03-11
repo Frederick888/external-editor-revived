@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
+use std::error::Error as StdError;
 use std::{io, str::FromStr};
 
 use super::thunderbird::*;
@@ -9,6 +10,8 @@ pub const MAX_BODY_LENGTH: usize = 768 * 1024;
 
 const HEADER_PRIORITY: &str = "X-ExtEditorR-Priority";
 const HEADER_LOWER_PRIORITY: &str = "x-exteditorr-priority"; // cspell: disable-line
+const HEADER_DELIVERY_FORMAT: &str = "X-ExtEditorR-Delivery-Format";
+const HEADER_LOWER_DELIVERY_FORMAT: &str = "x-exteditorr-delivery-format"; // cspell: disable-line
 const HEADER_ATTACH_VCARD: &str = "X-ExtEditorR-Attach-vCard";
 const HEADER_LOWER_ATTACH_VCARD: &str = "x-exteditorr-attach-vcard"; // cspell: disable-line
 const HEADER_SEND_ON_EXIT: &str = "X-ExtEditorR-Send-On-Exit";
@@ -84,6 +87,14 @@ impl Compose {
         if let Some(ref priority) = self.compose_details.priority {
             writeln_crlf!(w, "{}: {}", HEADER_PRIORITY, priority)?;
         }
+        if let Some(ref delivery_format) = self.compose_details.delivery_format {
+            match delivery_format {
+                Some(delivery_format) => {
+                    writeln_crlf!(w, "{}: [{}]", HEADER_DELIVERY_FORMAT, delivery_format)?
+                }
+                None => writeln_crlf!(w, "{}: [{}]", HEADER_DELIVERY_FORMAT, DeliveryFormat::Auto)?,
+            }
+        }
         if let Some(attach_vcard) = self.compose_details.attach_vcard.inner {
             writeln_crlf!(w, "{}: [{}]", HEADER_ATTACH_VCARD, attach_vcard)?;
         }
@@ -149,8 +160,18 @@ impl Compose {
                     HEADER_LOWER_PRIORITY => {
                         self.compose_details.priority = Some(Priority::from_str(header_value)?)
                     }
+                    HEADER_LOWER_DELIVERY_FORMAT => {
+                        if let Some(delivery_format) = Self::parse_optional_header::<DeliveryFormat>(
+                            HEADER_DELIVERY_FORMAT,
+                            header_value,
+                        )? {
+                            self.compose_details.delivery_format = Some(Some(delivery_format));
+                        }
+                    }
                     HEADER_LOWER_ATTACH_VCARD => {
-                        if let Some(attach_vcard) = Self::parse_attach_vcard(header_value)? {
+                        if let Some(attach_vcard) =
+                            Self::parse_optional_header::<bool>(HEADER_ATTACH_VCARD, header_value)?
+                        {
                             self.compose_details.attach_vcard.set(attach_vcard);
                         }
                     }
@@ -256,16 +277,18 @@ impl Compose {
         Ok(())
     }
 
-    fn parse_attach_vcard(header_value: &str) -> Result<Option<bool>> {
+    fn parse_optional_header<T>(header_name: &str, header_value: &str) -> Result<Option<T>>
+    where
+        T: FromStr,
+        <T as FromStr>::Err: StdError + 'static,
+    {
         match header_value {
-            "true" => Ok(Some(true)),
-            "false" => Ok(Some(false)),
-            "[true]" | "[false]" => Ok(None),
-            _ => {
-                let message = format!(
-                    "ExtEditorR failed to parse {HEADER_ATTACH_VCARD} value: {header_value}"
-                );
-                Err(anyhow!(message))
+            _ if header_value.starts_with('[') && header_value.ends_with(']') => Ok(None),
+            header_value => {
+                let parsed = T::from_str(header_value).map_err(|_| {
+                    anyhow!("ExtEditorR failed to parse {header_name} value: {header_value}")
+                })?;
+                Ok(Some(parsed))
             }
         }
     }
@@ -468,6 +491,60 @@ pub mod tests {
     }
 
     #[test]
+    fn merge_delivery_format_test() {
+        let mut request = get_blank_compose();
+        let mut buf = Vec::new();
+        let result = request.to_eml(&mut buf);
+        assert!(result.is_ok());
+        let output = String::from_utf8(buf).unwrap();
+        assert!(!output.contains("X-ExtEditorR-Delivery-Format:"));
+
+        request.compose_details.delivery_format = Some(None);
+        let mut buf = Vec::new();
+        let result = request.to_eml(&mut buf);
+        assert!(result.is_ok());
+        let output = String::from_utf8(buf).unwrap();
+        assert!(output.contains("X-ExtEditorR-Delivery-Format: [auto]"));
+
+        request.compose_details.delivery_format = Some(Some(DeliveryFormat::Both));
+        let mut buf = Vec::new();
+        let result = request.to_eml(&mut buf);
+        assert!(result.is_ok());
+        let output = String::from_utf8(buf).unwrap();
+        assert!(output.contains("X-ExtEditorR-Delivery-Format: [both]"));
+
+        let mut eml = "X-ExtEditorR-Delivery-Format: [hello]\r\n\r\nThis is a test.\r\n".as_bytes();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(
+            &DeliveryFormat::Both,
+            responses[0]
+                .compose_details
+                .delivery_format
+                .as_ref()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+        );
+
+        request.compose_details.delivery_format = None;
+        let mut eml =
+            "X-ExtEditorR-Delivery-Format: plaintext\r\n\r\nThis is a test.\r\n".as_bytes();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(
+            &DeliveryFormat::PlainText,
+            responses[0]
+                .compose_details
+                .delivery_format
+                .as_ref()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+        );
+    }
+
+    #[test]
     fn merge_priority_test() {
         let mut request = get_blank_compose();
         request.compose_details.priority = Some(Priority::Normal);
@@ -488,7 +565,7 @@ pub mod tests {
     }
 
     #[test]
-    fn attach_vcard_test() {
+    fn merge_attach_vcard_test() {
         let mut request = get_blank_compose();
         request.compose_details.attach_vcard = TrackedOptionBool::new(false);
 
