@@ -89,6 +89,8 @@ pub struct ComposeDetails {
         skip_serializing_if = "TrackedOptionBool::is_unchanged"
     )]
     pub attach_vcard: TrackedOptionBool,
+    #[serde(rename = "deliveryStatusNotification")]
+    pub delivery_status_notification: Option<bool>,
 }
 
 impl ComposeDetails {
@@ -586,6 +588,7 @@ pub mod tests {
             attachments: Vec::new(),
             priority: None,
             attach_vcard: TrackedOptionBool::default(),
+            delivery_status_notification: None,
         }
     }
 }
