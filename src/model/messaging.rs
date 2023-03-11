@@ -21,8 +21,8 @@ const HEADER_LOWER_HELP: &str = "x-exteditorr-help"; // cspell: disable-line
 const HEADER_HELP_LINES: &[&str] = &[
     "Use one address per `To/Cc/Bcc/Reply-To` header",
     "(e.g. two recipients require two `To:` headers).",
-    "Remove brackets from `X-ExtEditorR-Attach-vCard`",
-    "to override identity's default setting.",
+    "Remove surrounding brackets from header values",
+    "to override default settings.",
     "KEEP blank line below to separate headers from body.",
 ];
 
