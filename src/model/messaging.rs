@@ -351,10 +351,7 @@ pub mod tests {
         request.compose_details.body = "<html>".to_owned();
         request.compose_details.plain_text_body = "Hello, world!".to_owned();
 
-        let mut buf = Vec::new();
-        let result = request.to_eml(&mut buf);
-        assert!(result.is_ok());
-        let output = String::from_utf8(buf).unwrap();
+        let output = to_eml_and_assert(&request);
         assert!(output.contains("From: someone@example.com"));
         assert!(output.contains("Cc: foo@example.com"));
         assert!(output.contains("Cc: bar@example.com"));
@@ -373,10 +370,7 @@ pub mod tests {
         request.compose_details.is_plain_text = true;
         request.compose_details.plain_text_body = "Hello, world!".to_owned();
 
-        let mut buf = Vec::new();
-        let result = request.to_eml(&mut buf);
-        assert!(result.is_ok());
-        let output = String::from_utf8(buf).unwrap();
+        let output = to_eml_and_assert(&request);
         assert!(output.contains("From: "));
         assert!(output.contains("To: "));
         assert!(output.contains("Cc: "));
@@ -395,10 +389,7 @@ pub mod tests {
         request.compose_details.is_plain_text = true;
         request.compose_details.plain_text_body = "Hello, world!".to_owned();
 
-        let mut buf = Vec::new();
-        let result = request.to_eml(&mut buf);
-        assert!(result.is_ok());
-        let output = String::from_utf8(buf).unwrap();
+        let output = to_eml_and_assert(&request);
         assert_eq!(2, output.matches("Cc:").count());
         assert!(output.contains("Cc: foo@example.com"));
         assert!(output.contains("Cc: bar@example.com"));
@@ -517,24 +508,15 @@ pub mod tests {
     #[test]
     fn merge_delivery_format_test() {
         let mut request = get_blank_compose();
-        let mut buf = Vec::new();
-        let result = request.to_eml(&mut buf);
-        assert!(result.is_ok());
-        let output = String::from_utf8(buf).unwrap();
+        let output = to_eml_and_assert(&request);
         assert!(!output.contains("X-ExtEditorR-Delivery-Format:"));
 
         request.compose_details.delivery_format = Some(None);
-        let mut buf = Vec::new();
-        let result = request.to_eml(&mut buf);
-        assert!(result.is_ok());
-        let output = String::from_utf8(buf).unwrap();
+        let output = to_eml_and_assert(&request);
         assert!(output.contains("X-ExtEditorR-Delivery-Format: [auto]"));
 
         request.compose_details.delivery_format = Some(Some(DeliveryFormat::Both));
-        let mut buf = Vec::new();
-        let result = request.to_eml(&mut buf);
-        assert!(result.is_ok());
-        let output = String::from_utf8(buf).unwrap();
+        let output = to_eml_and_assert(&request);
         assert!(output.contains("X-ExtEditorR-Delivery-Format: [both]"));
 
         let mut eml = "X-ExtEditorR-Delivery-Format: [hello]\r\n\r\nThis is a test.\r\n".as_bytes();
@@ -573,10 +555,7 @@ pub mod tests {
         let mut request = get_blank_compose();
         request.compose_details.priority = Some(Priority::Normal);
 
-        let mut buf = Vec::new();
-        let result = request.to_eml(&mut buf);
-        assert!(result.is_ok());
-        let output = String::from_utf8(buf).unwrap();
+        let output = to_eml_and_assert(&request);
         assert!(output.contains("X-ExtEditorR-Priority: normal"));
 
         let mut eml = "X-ExtEditorR-Priority: high\r\n\r\nThis is a test.\r\n".as_bytes();
@@ -593,10 +572,7 @@ pub mod tests {
         let mut request = get_blank_compose();
         request.compose_details.attach_vcard = TrackedOptionBool::new(false);
 
-        let mut buf = Vec::new();
-        let result = request.to_eml(&mut buf);
-        assert!(result.is_ok());
-        let output = String::from_utf8(buf).unwrap();
+        let output = to_eml_and_assert(&request);
         assert!(output.contains("X-ExtEditorR-Attach-vCard: [false]"));
 
         let mut eml = "X-ExtEditorR-Attach-vCard: [false]\r\n\r\nThis is a test.\r\n".as_bytes();
@@ -626,17 +602,11 @@ pub mod tests {
     fn merge_delivery_status_notification_test() {
         let mut request = get_blank_compose();
 
-        let mut buf = Vec::new();
-        let result = request.to_eml(&mut buf);
-        assert!(result.is_ok());
-        let output = String::from_utf8(buf).unwrap();
+        let output = to_eml_and_assert(&request);
         assert!(!output.contains("X-ExtEditorR-Delivery-Status-Notification:"));
 
         request.compose_details.delivery_status_notification = Some(false);
-        let mut buf = Vec::new();
-        let result = request.to_eml(&mut buf);
-        assert!(result.is_ok());
-        let output = String::from_utf8(buf).unwrap();
+        let output = to_eml_and_assert(&request);
         assert!(output.contains("X-ExtEditorR-Delivery-Status-Notification: false"));
 
         let mut eml =
@@ -653,17 +623,11 @@ pub mod tests {
     fn merge_return_receipt_test() {
         let mut request = get_blank_compose();
 
-        let mut buf = Vec::new();
-        let result = request.to_eml(&mut buf);
-        assert!(result.is_ok());
-        let output = String::from_utf8(buf).unwrap();
+        let output = to_eml_and_assert(&request);
         assert!(!output.contains("X-ExtEditorR-Return-Receipt:"));
 
         request.compose_details.return_receipt = Some(false);
-        let mut buf = Vec::new();
-        let result = request.to_eml(&mut buf);
-        assert!(result.is_ok());
-        let output = String::from_utf8(buf).unwrap();
+        let output = to_eml_and_assert(&request);
         assert!(output.contains("X-ExtEditorR-Return-Receipt: false"));
 
         let mut eml = "X-ExtEditorR-Return-Receipt: true\r\n\r\nThis is a test.\r\n".as_bytes();
@@ -740,18 +704,19 @@ pub mod tests {
     #[test]
     fn help_headers_test() {
         let mut request = get_blank_compose();
-        let mut buf = Vec::new();
-        let result = request.to_eml(&mut buf);
-        assert!(result.is_ok());
-        let output = String::from_utf8(buf).unwrap();
+        let output = to_eml_and_assert(&request);
         assert!(output.contains("X-ExtEditorR-Help"));
 
         request.configuration.suppress_help_headers = true;
-        let mut buf = Vec::new();
-        let result = request.to_eml(&mut buf);
-        assert!(result.is_ok());
-        let output = String::from_utf8(buf).unwrap();
+        let output = to_eml_and_assert(&request);
         assert!(!output.contains("X-ExtEditorR-Help"));
+    }
+
+    fn to_eml_and_assert(compose: &Compose) -> String {
+        let mut buf = Vec::new();
+        let result = compose.to_eml(&mut buf);
+        assert!(result.is_ok());
+        String::from_utf8(buf).unwrap()
     }
 
     pub fn get_blank_compose() -> Compose {
