@@ -16,6 +16,8 @@ const HEADER_ATTACH_VCARD: &str = "X-ExtEditorR-Attach-vCard";
 const HEADER_LOWER_ATTACH_VCARD: &str = "x-exteditorr-attach-vcard"; // cspell: disable-line
 const HEADER_DELIVERY_STATUS_NOTIFICATION: &str = "X-ExtEditorR-Delivery-Status-Notification";
 const HEADER_LOWER_DELIVERY_STATUS_NOTIFICATION: &str = "x-exteditorr-delivery-status-notification"; // cspell: disable-line
+const HEADER_RETURN_RECEIPT: &str = "X-ExtEditorR-Return-Receipt";
+const HEADER_LOWER_RETURN_RECEIPT: &str = "x-exteditorr-return-receipt"; // cspell: disable-line
 const HEADER_SEND_ON_EXIT: &str = "X-ExtEditorR-Send-On-Exit";
 const HEADER_LOWER_SEND_ON_EXIT: &str = "x-exteditorr-send-on-exit"; // cspell: disable-line
 const HEADER_HELP: &str = "X-ExtEditorR-Help";
@@ -110,6 +112,9 @@ impl Compose {
                 delivery_status_notification
             )?;
         }
+        if let Some(return_receipt) = self.compose_details.return_receipt {
+            writeln_crlf!(w, "{}: {}", HEADER_RETURN_RECEIPT, return_receipt)?;
+        }
         writeln_crlf!(
             w,
             "{}: {}",
@@ -190,6 +195,9 @@ impl Compose {
                     HEADER_LOWER_DELIVERY_STATUS_NOTIFICATION => {
                         self.compose_details.delivery_status_notification =
                             Some(bool::from_str(header_value)?);
+                    }
+                    HEADER_LOWER_RETURN_RECEIPT => {
+                        self.compose_details.return_receipt = Some(bool::from_str(header_value)?);
                     }
                     HEADER_LOWER_SEND_ON_EXIT => {
                         self.configuration.send_on_exit = header_value == "true"
@@ -640,6 +648,30 @@ pub mod tests {
             responses[0].compose_details.delivery_status_notification
         );
     }
+
+    #[test]
+    fn merge_return_receipt_test() {
+        let mut request = get_blank_compose();
+
+        let mut buf = Vec::new();
+        let result = request.to_eml(&mut buf);
+        assert!(result.is_ok());
+        let output = String::from_utf8(buf).unwrap();
+        assert!(!output.contains("X-ExtEditorR-Return-Receipt:"));
+
+        request.compose_details.return_receipt = Some(false);
+        let mut buf = Vec::new();
+        let result = request.to_eml(&mut buf);
+        assert!(result.is_ok());
+        let output = String::from_utf8(buf).unwrap();
+        assert!(output.contains("X-ExtEditorR-Return-Receipt: false"));
+
+        let mut eml = "X-ExtEditorR-Return-Receipt: true\r\n\r\nThis is a test.\r\n".as_bytes();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(Some(true), responses[0].compose_details.return_receipt);
+    }
+
     #[test]
     fn merge_send_on_exit_test() {
         let mut eml = "X-ExtEditorR-Send-On-Exit: true\r\n\r\nThis is a test.\r\n".as_bytes();
