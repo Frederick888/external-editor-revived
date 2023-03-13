@@ -91,6 +91,8 @@ pub struct ComposeDetails {
     pub attach_vcard: TrackedOptionBool,
     #[serde(rename = "deliveryStatusNotification")]
     pub delivery_status_notification: Option<bool>,
+    #[serde(rename = "returnReceipt")]
+    pub return_receipt: Option<bool>,
 }
 
 impl ComposeDetails {
@@ -589,6 +591,7 @@ pub mod tests {
             priority: None,
             attach_vcard: TrackedOptionBool::default(),
             delivery_status_notification: None,
+            return_receipt: None,
         }
     }
 }

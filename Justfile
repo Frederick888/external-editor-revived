@@ -1,5 +1,12 @@
 set shell := ["bash", "+u", "-c"]
 
+default:
+    cargo fmt -- --check
+    cargo clippy --locked
+    cargo clippy --locked --tests
+    cargo test --quiet
+    cargo build
+
 lint:
     cargo fmt -- --check
     cargo clippy --locked -- -D warnings
