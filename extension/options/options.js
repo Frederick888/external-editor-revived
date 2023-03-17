@@ -26,6 +26,7 @@ const upstreamTemplateTextArea = document.getElementById('upstream-template')
 const upstreamTemplateSyncButton = document.getElementById('upstream-template-sync')
 const suppressHelpHeadersInput = document.getElementById('suppress-help-headers')
 const temporaryDirectoryInput = document.getElementById('temp-dir')
+const allowCustomHeadersInput = document.getElementById('allow-custom-headers')
 const bypassVersionCheckInput = document.getElementById('bypass-version-check')
 const applyButton = document.getElementById('apply')
 
@@ -138,6 +139,7 @@ async function saveSettings() {
   const template = templateTextArea.value
   const temporaryDirectory = temporaryDirectoryInput.value
   const suppressHelpHeaders = suppressHelpHeadersInput.checked
+  const allowCustomHeaders = allowCustomHeadersInput.checked
   const bypassVersionCheck = bypassVersionCheckInput.checked
   await browser.storage.local.set({
     editor: editor,
@@ -146,12 +148,13 @@ async function saveSettings() {
     template: template,
     temporaryDirectory: temporaryDirectory,
     suppressHelpHeaders: suppressHelpHeaders,
+    allowCustomHeaders: allowCustomHeaders,
     bypassVersionCheck: bypassVersionCheck,
   })
 }
 
 async function loadSettings() {
-  const settings = await browser.storage.local.get(['healthy', 'editor', 'terminal', 'shell', 'template', 'temporaryDirectory', 'suppressHelpHeaders', 'bypassVersionCheck'])
+  const settings = await browser.storage.local.get(['healthy', 'editor', 'terminal', 'shell', 'template', 'temporaryDirectory', 'suppressHelpHeaders', 'allowCustomHeaders', 'bypassVersionCheck'])
   if (settings.healthy === true) {
     hideElement(banner)
   } else {
@@ -164,6 +167,7 @@ async function loadSettings() {
     templateTextArea.value = settings.template
     temporaryDirectoryInput.value = settings.temporaryDirectory ?? ''
     suppressHelpHeadersInput.checked = !!settings.suppressHelpHeaders
+    allowCustomHeadersInput.checked = !!settings.allowCustomHeaders
     bypassVersionCheckInput.checked = !!settings.bypassVersionCheck
     await updateOptionsForEditor(settings.editor)
   } else {
