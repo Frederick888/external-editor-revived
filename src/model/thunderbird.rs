@@ -93,6 +93,8 @@ pub struct ComposeDetails {
     pub delivery_status_notification: Option<bool>,
     #[serde(rename = "returnReceipt")]
     pub return_receipt: Option<bool>,
+    #[serde(default, rename = "customHeaders")]
+    pub custom_headers: Vec<CustomHeader>,
 }
 
 impl ComposeDetails {
@@ -332,6 +334,27 @@ pub enum ComposeRecipientList {
 pub enum Newsgroups {
     Single(String),
     Multiple(Vec<String>),
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CustomHeader {
+    pub name: String,
+    pub value: String,
+}
+
+impl CustomHeader {
+    pub fn new(name: &str, value: &str) -> Self {
+        let name = name.trim();
+        Self {
+            name: if let Some(name) = name.strip_prefix("x-") {
+                // Thunderbird is case-sensitive
+                "X-".to_string() + name
+            } else {
+                name.to_owned()
+            },
+            value: value.trim().to_owned(),
+        }
+    }
 }
 
 // https://github.com/serde-rs/serde/issues/984#issuecomment-314143738
@@ -592,6 +615,7 @@ pub mod tests {
             attach_vcard: TrackedOptionBool::default(),
             delivery_status_notification: None,
             return_receipt: None,
+            custom_headers: Vec::new(),
         }
     }
 }
