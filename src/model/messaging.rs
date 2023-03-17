@@ -343,14 +343,13 @@ impl Compose {
         T: FromStr,
         <T as FromStr>::Err: StdError + 'static,
     {
-        match header_value {
-            _ if header_value.starts_with('[') && header_value.ends_with(']') => Ok(None),
-            _ => {
-                let parsed = T::from_str(header_value).map_err(|_| {
-                    anyhow!("ExtEditorR failed to parse {header_name} value: {header_value}")
-                })?;
-                Ok(Some(parsed))
-            }
+        if header_value.starts_with('[') && header_value.ends_with(']') {
+            Ok(None)
+        } else {
+            let parsed = T::from_str(header_value).map_err(|_| {
+                anyhow!("ExtEditorR failed to parse {header_name} value: {header_value}")
+            })?;
+            Ok(Some(parsed))
         }
     }
 
