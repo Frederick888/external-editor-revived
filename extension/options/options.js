@@ -142,14 +142,14 @@ async function saveSettings() {
   const allowCustomHeaders = allowCustomHeadersInput.checked
   const bypassVersionCheck = bypassVersionCheckInput.checked
   await browser.storage.local.set({
-    editor: editor,
-    terminal: terminal,
-    shell: shell,
-    template: template,
-    temporaryDirectory: temporaryDirectory,
-    suppressHelpHeaders: suppressHelpHeaders,
-    allowCustomHeaders: allowCustomHeaders,
-    bypassVersionCheck: bypassVersionCheck,
+    editor,
+    terminal,
+    shell,
+    template,
+    temporaryDirectory,
+    suppressHelpHeaders,
+    allowCustomHeaders,
+    bypassVersionCheck,
   })
 }
 

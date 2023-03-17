@@ -111,8 +111,8 @@ async function composeActionListener(tab, info) {
       allowCustomHeaders: !!settings.allowCustomHeaders,
       bypassVersionCheck: !!settings.bypassVersionCheck,
     },
-    tab: tab,
-    composeDetails: composeDetails,
+    tab,
+    composeDetails,
   }
   console.debug(`${manifest.short_name} sending: `, request)
   try {
@@ -225,9 +225,9 @@ async function getFocusedTab(tabType) {
 async function createBasicNotification(id, title, message, eventTime = 5000) {
   await browser.notifications.create(id, {
     type: 'basic',
-    title: title,
-    message: message,
-    eventTime: eventTime,
+    title,
+    message,
+    eventTime,
   })
 }
 
