@@ -20,13 +20,19 @@ const HEADER_RETURN_RECEIPT: &str = "X-ExtEditorR-Return-Receipt";
 const HEADER_LOWER_RETURN_RECEIPT: &str = "x-exteditorr-return-receipt"; // cspell: disable-line
 const HEADER_SEND_ON_EXIT: &str = "X-ExtEditorR-Send-On-Exit";
 const HEADER_LOWER_SEND_ON_EXIT: &str = "x-exteditorr-send-on-exit"; // cspell: disable-line
+const HEADER_ALLOW_X_HEADERS: &str = "X-ExtEditorR-Allow-X-Headers";
+const HEADER_LOWER_ALLOW_X_HEADERS: &str = "x-exteditorr-allow-x-headers"; // cspell: disable-line
+const HEADER_LOWER_ALLOW_CUSTOM_HEADERS: &str = "x-exteditorr-allow-custom-headers"; // cspell: disable-line
+const HEADER_LOWER_CUSTOM_HEADER: &str = "x-exteditorr-custom-header"; // cspell: disable-line
+const HEADER_LOWER_X_HEADER: &str = "x-exteditorr-x-header"; // cspell: disable-line
 const HEADER_HELP: &str = "X-ExtEditorR-Help";
 const HEADER_LOWER_HELP: &str = "x-exteditorr-help"; // cspell: disable-line
 const HEADER_HELP_LINES: &[&str] = &[
     "Use one address per `To/Cc/Bcc/Reply-To` header",
-    "(e.g. two recipients require two `To:` headers).",
+    "    (e.g. two recipients require two `To:` headers).",
     "Remove surrounding brackets from header values",
-    "to override default settings.",
+    "    to override default settings.",
+    "Custom header names must start with \"X-\".",
     "KEEP blank line below to separate headers from body.",
 ];
 
@@ -63,6 +69,8 @@ pub struct Configuration {
     pub send_on_exit: bool,
     #[serde(default)]
     pub suppress_help_headers: bool,
+    #[serde(default)]
+    pub allow_custom_headers: bool,
     #[serde(default)]
     pub bypass_version_check: bool,
 }
@@ -121,6 +129,16 @@ impl Compose {
             HEADER_SEND_ON_EXIT,
             self.configuration.send_on_exit
         )?;
+        writeln_crlf!(
+            w,
+            "{}: {}",
+            HEADER_ALLOW_X_HEADERS,
+            self.configuration.allow_custom_headers
+                || !self.compose_details.custom_headers.is_empty()
+        )?;
+        for custom_header in &self.compose_details.custom_headers {
+            writeln_crlf!(w, "{}: {}", custom_header.name, custom_header.value)?;
+        }
         if !self.configuration.suppress_help_headers {
             Self::write_help_headers(w)?;
         }
@@ -141,6 +159,7 @@ impl Compose {
         let mut buf = Vec::new();
         // read headers
         let mut unknown_headers = Vec::new();
+        self.compose_details.custom_headers.clear();
         while let Ok(length) = r.read_until(b'\n', &mut buf) {
             if length == 0 {
                 break;
@@ -199,13 +218,26 @@ impl Compose {
                     HEADER_LOWER_RETURN_RECEIPT => {
                         self.compose_details.return_receipt = Some(bool::from_str(header_value)?);
                     }
+                    HEADER_LOWER_ALLOW_X_HEADERS | HEADER_LOWER_ALLOW_CUSTOM_HEADERS => {
+                        self.configuration.allow_custom_headers = bool::from_str(header_value)?;
+                    }
+                    HEADER_LOWER_X_HEADER | HEADER_LOWER_CUSTOM_HEADER => {
+                        self.compose_details
+                            .custom_headers
+                            .push(Self::parse_custom_header(header_value)?);
+                    }
                     HEADER_LOWER_SEND_ON_EXIT => {
                         self.configuration.send_on_exit = header_value == "true"
                     }
                     HEADER_LOWER_HELP => {}
+                    _ if header_name.starts_with("X-") || header_name.starts_with("x-") => {
+                        // Thunderbird throws error if header name doesn't start with X-
+                        self.compose_details
+                            .custom_headers
+                            .push(CustomHeader::new(header_name, header_value));
+                    }
                     _ => {
                         unknown_headers.push(header_name.to_owned());
-                        eprintln!("ExtEditorR encountered unknown header {header_name} when processing temporary file");
                     }
                 }
             } else {
@@ -213,7 +245,12 @@ impl Compose {
             }
             buf.clear();
         }
-        // warning for unknown headers
+        if !self.configuration.allow_custom_headers {
+            self.compose_details
+                .custom_headers
+                .drain(..)
+                .for_each(|custom_header| unknown_headers.push(custom_header.name));
+        }
         if !unknown_headers.is_empty() {
             let mut message = "ExtEditorR did not recognise the following headers:\n".to_string();
             message += &unknown_headers
@@ -306,14 +343,24 @@ impl Compose {
         T: FromStr,
         <T as FromStr>::Err: StdError + 'static,
     {
-        match header_value {
-            _ if header_value.starts_with('[') && header_value.ends_with(']') => Ok(None),
-            _ => {
-                let parsed = T::from_str(header_value).map_err(|_| {
-                    anyhow!("ExtEditorR failed to parse {header_name} value: {header_value}")
-                })?;
-                Ok(Some(parsed))
+        if header_value.starts_with('[') && header_value.ends_with(']') {
+            Ok(None)
+        } else {
+            let parsed = T::from_str(header_value).map_err(|_| {
+                anyhow!("ExtEditorR failed to parse {header_name} value: {header_value}")
+            })?;
+            Ok(Some(parsed))
+        }
+    }
+
+    fn parse_custom_header(header_value: &str) -> Result<CustomHeader> {
+        match header_value.split_once(':') {
+            Some((custom_header_name, custom_header_value)) => {
+                Ok(CustomHeader::new(custom_header_name, custom_header_value))
             }
+            None => Err(anyhow!(
+                "ExtEditorR failed to parse custom header: {header_value}"
+            )),
         }
     }
 }
@@ -647,17 +694,113 @@ pub mod tests {
 
     #[test]
     fn unknown_headers_test() {
-        let mut eml = "Foo: hello\r\nX-ExtEditorR-Send-On-Exit: true\r\nBar: world\r\n\r\nThis is a test.\r\n".as_bytes();
+        let mut eml = "Foo: hello\r\nX-ExtEditorR-Send-On-Exit: true\r\nX-Bar: world\r\n\r\nThis is a test.\r\n".as_bytes();
         let mut request = get_blank_compose();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
         assert_eq!(1, responses[0].warnings.len());
         assert_eq!("Unknown header(s) found", responses[0].warnings[0].title);
         assert_eq!(
-            "ExtEditorR did not recognise the following headers:\n- Foo\n- Bar",
+            "ExtEditorR did not recognise the following headers:\n- Foo\n- X-Bar",
             responses[0].warnings[0].message
         );
         assert!(!responses[0].configuration.send_on_exit);
+    }
+
+    #[test]
+    fn custom_headers_test() {
+        let mut request = get_blank_compose();
+
+        let output = to_eml_and_assert(&request);
+        assert!(output.contains("X-ExtEditorR-Allow-X-Headers: false"));
+
+        request.configuration.allow_custom_headers = true;
+        let output = to_eml_and_assert(&request);
+        assert!(output.contains("X-ExtEditorR-Allow-X-Headers: true"));
+
+        request.compose_details.custom_headers.push(CustomHeader {
+            name: "X-Foo".to_owned(),
+            value: "Hello, world!".to_owned(),
+        });
+        request.configuration.allow_custom_headers = false;
+        let output = to_eml_and_assert(&request);
+        assert!(output.contains("X-ExtEditorR-Allow-X-Headers: true"));
+        assert!(output.contains("X-Foo: Hello, world!"));
+
+        let mut eml =
+            "X-Bar: Hello\r\nX-ExtEditorR-Allow-X-Headers: true\r\n\r\nThis is a test.\r\n"
+                .as_bytes();
+        request.configuration.allow_custom_headers = false;
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert!(responses[0].warnings.is_empty());
+        assert_eq!(1, responses[0].compose_details.custom_headers.len());
+        assert_eq!(
+            "X-Bar",
+            &responses[0].compose_details.custom_headers[0].name
+        );
+        assert_eq!(
+            "Hello",
+            &responses[0].compose_details.custom_headers[0].value
+        );
+
+        let eml = [
+            "X-ExtEditorR-X-Header: X-ExtEditorR-Send-On-Exit: Hello",
+            "X-ExtEditorR-Custom-Header: x-ExtEditorR-X-Header: Hello",
+            "X-ExtEditorR-Allow-Custom-Headers: true",
+            "",
+            "This is a test.",
+            "",
+        ]
+        .join("\r\n")
+        .into_bytes();
+        request.configuration.allow_custom_headers = false;
+        request.compose_details.custom_headers.clear();
+        let responses = request.merge_from_eml(&mut eml.as_slice(), 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert!(responses[0].warnings.is_empty());
+        assert_eq!(2, responses[0].compose_details.custom_headers.len());
+        assert_eq!(
+            "X-ExtEditorR-Send-On-Exit",
+            &responses[0].compose_details.custom_headers[0].name
+        );
+        assert_eq!(
+            "Hello",
+            &responses[0].compose_details.custom_headers[0].value
+        );
+        assert_eq!(
+            "X-ExtEditorR-X-Header",
+            &responses[0].compose_details.custom_headers[1].name
+        );
+        assert_eq!(
+            "Hello",
+            &responses[0].compose_details.custom_headers[1].value
+        );
+
+        let mut eml = "X-Bar: Hello\r\n\r\nThis is a test.\r\n".as_bytes();
+        request.configuration.allow_custom_headers = false;
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(1, responses[0].warnings.len());
+        assert_eq!("Unknown header(s) found", responses[0].warnings[0].title);
+        assert_eq!(
+            "ExtEditorR did not recognise the following headers:\n- X-Bar",
+            responses[0].warnings[0].message
+        );
+        assert!(!responses[0].configuration.send_on_exit);
+
+        let mut eml = "Bar: Hello\r\nX-ExtEditorR-Allow-X-Headers: true\r\n\r\nThis is a test.\r\n"
+            .as_bytes();
+        request.configuration.allow_custom_headers = false;
+        request.warnings.clear();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(1, responses[0].warnings.len());
+        assert_eq!("Unknown header(s) found", responses[0].warnings[0].title);
+        assert_eq!(
+            "ExtEditorR did not recognise the following headers:\n- Bar",
+            responses[0].warnings[0].message
+        );
     }
 
     #[test]
@@ -730,6 +873,7 @@ pub mod tests {
                 temporary_directory: "".to_owned(),
                 send_on_exit: false,
                 suppress_help_headers: false,
+                allow_custom_headers: false,
                 bypass_version_check: false,
             },
             warnings: Vec::new(),

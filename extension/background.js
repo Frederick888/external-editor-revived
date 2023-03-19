@@ -88,7 +88,7 @@ async function composeActionListener(tab, info) {
   if (!await messenger.composeAction.isEnabled({tabId: tab.id})) {
     return
   }
-  const settings = await browser.storage.local.get(['editor', 'shell', 'template', 'temporaryDirectory', 'suppressHelpHeaders', 'bypassVersionCheck'])
+  const settings = await browser.storage.local.get(['editor', 'shell', 'template', 'temporaryDirectory', 'suppressHelpHeaders', 'allowCustomHeaders', 'bypassVersionCheck'])
   if (!settings.editor) {
     await createBasicNotification(
       'no-settings',
@@ -108,10 +108,11 @@ async function composeActionListener(tab, info) {
       temporaryDirectory: settings.temporaryDirectory,
       sendOnExit: info.modifiers.indexOf('Shift') >= 0,
       suppressHelpHeaders: !!settings.suppressHelpHeaders,
+      allowCustomHeaders: !!settings.allowCustomHeaders,
       bypassVersionCheck: !!settings.bypassVersionCheck,
     },
-    tab: tab,
-    composeDetails: composeDetails,
+    tab,
+    composeDetails,
   }
   console.debug(`${manifest.short_name} sending: `, request)
   try {
@@ -224,9 +225,9 @@ async function getFocusedTab(tabType) {
 async function createBasicNotification(id, title, message, eventTime = 5000) {
   await browser.notifications.create(id, {
     type: 'basic',
-    title: title,
-    message: message,
-    eventTime: eventTime,
+    title,
+    message,
+    eventTime,
   })
 }
 
