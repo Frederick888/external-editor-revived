@@ -93,7 +93,11 @@ pub struct ComposeDetails {
     pub delivery_status_notification: Option<bool>,
     #[serde(rename = "returnReceipt")]
     pub return_receipt: Option<bool>,
-    #[serde(default, rename = "customHeaders")]
+    #[serde(
+        default,
+        rename = "customHeaders",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub custom_headers: Vec<CustomHeader>,
 }
 
