@@ -80,7 +80,7 @@ async function commandReply(replyType, sendOnExit) {
 }
 
 async function browserActionListener(_tab, info) {
-  const composeTab = await messenger.compose.beginNew()
+  const composeTab = await messenger.compose.beginNew(undefined, {isPlainText: true})
   await composeActionListener(composeTab, info)
 }
 
