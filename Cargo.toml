@@ -9,7 +9,7 @@ license = "GPL-3.0-or-later"
 anyhow = "1.0.58"
 serde = { version = "1.0.137", features = ["derive"] }
 serde_json = "1.0.81"
-strum = { version = "0.24.1", features = ["derive"] }
+strum = { version = "0.25.0", features = ["derive"] }
 webextension-native-messaging = "1.0.1"
 
 [dev-dependencies]
