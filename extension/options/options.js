@@ -21,7 +21,7 @@ const terminalSelect = document.getElementById('terminal')
 const shellRow = document.getElementById('shell-row')
 const shellInput = document.getElementById('shell')
 const templateTextArea = document.getElementById('template')
-const templatePathWarning = document.getElementById('template-path-warning')
+const templateTempFileNameWarning = document.getElementById('template-temp-file-name-warning')
 const upstreamTemplateRow = document.getElementById('upstream-template-row')
 const upstreamTemplateTextArea = document.getElementById('upstream-template')
 const upstreamTemplateSyncButton = document.getElementById('upstream-template-sync')
@@ -127,21 +127,21 @@ async function updateTemplate() {
   const template = await generateTemplate()
   if (template !== null) {
     templateTextArea.value = template
-    await toggleTemplateFileNameWarning()
+    await toggleTemplateTempFileNameWarning()
   }
 }
 async function updateUpstreamTemplate() {
   upstreamTemplateTextArea.value = await generateTemplate()
 }
 
-async function toggleTemplateFileNameWarning() {
+async function toggleTemplateTempFileNameWarning() {
   if (templateTextArea.value.indexOf(templateTempFileName) < 0) {
-    showElement(templatePathWarning)
+    showElement(templateTempFileNameWarning)
   } else {
-    hideElement(templatePathWarning)
+    hideElement(templateTempFileNameWarning)
   }
 }
-templateTextArea.onchange = templateTextArea.onkeyup = toggleTemplateFileNameWarning
+templateTextArea.onchange = templateTextArea.onkeyup = toggleTemplateTempFileNameWarning
 
 async function saveSettings() {
   const editor = editorSelect.value
