@@ -5,7 +5,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   gh-ph:
@@ -17,4 +16,4 @@ jobs:
           fetch-depth: 0
       - uses: Frederick888/gh-ph@v1
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PH_TOKEN }}
