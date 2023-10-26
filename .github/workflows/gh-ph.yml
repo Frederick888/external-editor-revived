@@ -5,10 +5,12 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   gh-ph:
     name: Add commit history to pull request description
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -16,4 +18,4 @@ jobs:
           fetch-depth: 0
       - uses: Frederick888/gh-ph@v1
         env:
-          GH_TOKEN: ${{ secrets.GH_PH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
