@@ -120,6 +120,9 @@ async function generateTemplate() {
     case 'konsole':
       terminalCommand += 'konsole -e'
       break
+    case 'gnome-terminal':
+      terminalCommand += 'gnome-terminal --wait --'
+      break
   }
   return `${terminalCommand} ${editorCommand} ${templateTempFileName}`
 }
