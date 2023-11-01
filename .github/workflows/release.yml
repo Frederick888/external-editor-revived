@@ -16,7 +16,7 @@ jobs:
       release_id: ${{ steps.create_release.outputs.id }}
       is_pre: ${{ steps.release_type.outputs.is_pre }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Conventional Commit Changelog
@@ -56,7 +56,7 @@ jobs:
     needs: create_release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Zip
         run: |
           pushd ./extension
@@ -100,7 +100,7 @@ jobs:
             target: x86_64-pc-windows-msvc
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install macOS Dependencies
         if: contains(matrix.os, 'macos')
