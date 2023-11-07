@@ -32,6 +32,8 @@ const HEADER_HELP_LINES: &[&str] = &[
     "    (e.g. two recipients require two `To:` headers).",
     "Remove surrounding brackets from header values",
     "    to override default settings.",
+    "Priority options: lowest, low, normal, high, highest.",
+    "Delivery format options: auto, plaintext, html, both.",
     "Custom header names must start with \"X-\".",
     "KEEP blank line below to separate headers from body.",
 ];
