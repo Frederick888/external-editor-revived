@@ -1,3 +1,5 @@
+pub mod meta_header;
+
 use std::env;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
