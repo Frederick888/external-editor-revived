@@ -4,10 +4,14 @@ use std::error::Error as StdError;
 use std::{io, str::FromStr};
 
 use super::thunderbird::*;
-use crate::writeln_crlf;
+use crate::{util, writeln_crlf};
 
 pub const MAX_BODY_LENGTH: usize = 768 * 1024;
 
+const HEADER_META: &str = "X-ExtEditorR";
+const HEADER_LOWER_META: &str = "x-exteditorr"; // cspell: disable-line
+const HEADER_NORMALISED_META: &str = "X-Exteditorr"; // normalised by Thunderbird, cspell: disable-line
+const HEADER_LOWER_ESCAPED_META: &str = "x-exteditorr-x-exteditorr"; // cspell: disable-line
 const HEADER_PRIORITY: &str = "X-ExtEditorR-Priority";
 const HEADER_LOWER_PRIORITY: &str = "x-exteditorr-priority"; // cspell: disable-line
 const HEADER_DELIVERY_FORMAT: &str = "X-ExtEditorR-Delivery-Format";
@@ -72,6 +76,8 @@ pub struct Configuration {
     #[serde(default)]
     pub suppress_help_headers: bool,
     #[serde(default)]
+    pub meta_headers: bool,
+    #[serde(default)]
     pub allow_custom_headers: bool,
     #[serde(default)]
     pub bypass_version_check: bool,
@@ -98,47 +104,86 @@ impl Compose {
         Self::compose_recipient_list_to_eml(w, "Bcc", &self.compose_details.bcc)?;
         Self::compose_recipient_list_to_eml(w, "Reply-To", &self.compose_details.reply_to)?;
         writeln_crlf!(w, "Subject: {}", self.compose_details.subject)?;
+        // X-ExtEditorR headers
+        let mut headers = Vec::new();
         if let Some(ref priority) = self.compose_details.priority {
-            writeln_crlf!(w, "{}: {}", HEADER_PRIORITY, priority)?;
+            headers.push(format!("{HEADER_PRIORITY}: {priority}"));
         }
         if let Some(ref delivery_format) = self.compose_details.delivery_format {
             match delivery_format {
                 Some(delivery_format) => {
-                    writeln_crlf!(w, "{}: [{}]", HEADER_DELIVERY_FORMAT, delivery_format)?
+                    headers.push(format!("{HEADER_DELIVERY_FORMAT}: [{delivery_format}]"));
                 }
-                None => writeln_crlf!(w, "{}: [{}]", HEADER_DELIVERY_FORMAT, DeliveryFormat::Auto)?,
+                None => headers.push(format!(
+                    "{HEADER_DELIVERY_FORMAT}: [{}]",
+                    DeliveryFormat::Auto
+                )),
             }
         }
         if let Some(attach_vcard) = self.compose_details.attach_vcard.inner {
-            writeln_crlf!(w, "{}: [{}]", HEADER_ATTACH_VCARD, attach_vcard)?;
+            headers.push(format!("{HEADER_ATTACH_VCARD}: [{attach_vcard}]"));
         }
         if let Some(delivery_status_notification) =
             self.compose_details.delivery_status_notification
         {
-            writeln_crlf!(
-                w,
-                "{}: {}",
-                HEADER_DELIVERY_STATUS_NOTIFICATION,
-                delivery_status_notification
-            )?;
+            headers.push(format!(
+                "{HEADER_DELIVERY_STATUS_NOTIFICATION}: {delivery_status_notification}"
+            ));
         }
         if let Some(return_receipt) = self.compose_details.return_receipt {
-            writeln_crlf!(w, "{}: {}", HEADER_RETURN_RECEIPT, return_receipt)?;
+            headers.push(format!("{HEADER_RETURN_RECEIPT}: {return_receipt}"));
         }
-        writeln_crlf!(
-            w,
-            "{}: {}",
-            HEADER_SEND_ON_EXIT,
-            self.configuration.send_on_exit
-        )?;
-        writeln_crlf!(
-            w,
-            "{}: {}",
-            HEADER_ALLOW_X_HEADERS,
+        headers.push(format!(
+            "{HEADER_ALLOW_X_HEADERS}: {}",
             self.configuration.allow_custom_headers
                 || !self.compose_details.custom_headers.is_empty()
-        )?;
-        for custom_header in &self.compose_details.custom_headers {
+        ));
+        headers.push(format!(
+            "{HEADER_SEND_ON_EXIT}: {}",
+            self.configuration.send_on_exit
+        ));
+        let need_escaping = |custom_header: &&CustomHeader| -> bool {
+            custom_header
+                .name
+                .to_lowercase()
+                .starts_with(HEADER_LOWER_META)
+        };
+        for custom_header in self
+            .compose_details
+            .custom_headers
+            .iter()
+            .filter(need_escaping)
+        {
+            headers.push(format!(
+                "{}-{}: {}",
+                HEADER_META,
+                custom_header
+                    .name
+                    .replace(HEADER_NORMALISED_META, HEADER_META),
+                custom_header.value
+            ));
+        }
+        if self.configuration.meta_headers {
+            let headers: Vec<_> = headers
+                .into_iter()
+                .map(|header| header.split_at(HEADER_META.len() + 1).1.to_string())
+                .collect();
+            let headers = util::meta_header::align_headers(headers);
+            for header in headers {
+                writeln_crlf!(w, "{}: {}", HEADER_META, header)?;
+            }
+        } else {
+            for header in headers {
+                writeln_crlf!(w, "{}", header)?;
+            }
+        }
+
+        for custom_header in self
+            .compose_details
+            .custom_headers
+            .iter()
+            .filter(|custom_header| !need_escaping(custom_header))
+        {
             writeln_crlf!(w, "{}: {}", custom_header.name, custom_header.value)?;
         }
         if !self.configuration.suppress_help_headers {
@@ -171,83 +216,18 @@ impl Compose {
                 break;
             }
             if let Some((header_name, header_value)) = line.split_once(':') {
-                let header_name_lower = header_name.trim().to_lowercase();
-                let header_value = header_value.trim();
-                if header_value.is_empty() {
-                    buf.clear();
-                    continue;
-                }
-                match header_name_lower.as_str() {
-                    "from" => {
-                        self.compose_details.from =
-                            ComposeRecipient::from_header_value(header_value)?
-                    }
-                    "to" => self
-                        .compose_details
-                        .add_to(ComposeRecipient::from_header_value(header_value)?),
-                    "cc" => self
-                        .compose_details
-                        .add_cc(ComposeRecipient::from_header_value(header_value)?),
-                    "bcc" => self
-                        .compose_details
-                        .add_bcc(ComposeRecipient::from_header_value(header_value)?),
-                    "reply-to" => self
-                        .compose_details
-                        .add_reply_to(ComposeRecipient::from_header_value(header_value)?),
-                    "subject" => self.compose_details.subject = header_value.to_string(),
-                    HEADER_LOWER_PRIORITY => {
-                        self.compose_details.priority = Some(Priority::from_str(header_value)?)
-                    }
-                    HEADER_LOWER_DELIVERY_FORMAT => {
-                        if let Some(delivery_format) = Self::parse_optional_header::<DeliveryFormat>(
-                            HEADER_DELIVERY_FORMAT,
-                            header_value,
-                        )? {
-                            self.compose_details.delivery_format = Some(Some(delivery_format));
-                        }
-                    }
-                    HEADER_LOWER_ATTACH_VCARD => {
-                        if let Some(attach_vcard) =
-                            Self::parse_optional_header::<bool>(HEADER_ATTACH_VCARD, header_value)?
-                        {
-                            self.compose_details.attach_vcard.set(attach_vcard);
-                        }
-                    }
-                    HEADER_LOWER_DELIVERY_STATUS_NOTIFICATION => {
-                        self.compose_details.delivery_status_notification =
-                            Some(bool::from_str(header_value)?);
-                    }
-                    HEADER_LOWER_RETURN_RECEIPT => {
-                        self.compose_details.return_receipt = Some(bool::from_str(header_value)?);
-                    }
-                    HEADER_LOWER_ALLOW_X_HEADERS | HEADER_LOWER_ALLOW_CUSTOM_HEADERS => {
-                        self.configuration.allow_custom_headers = bool::from_str(header_value)?;
-                    }
-                    HEADER_LOWER_X_HEADER | HEADER_LOWER_CUSTOM_HEADER => {
-                        self.compose_details
-                            .custom_headers
-                            .push(Self::parse_custom_header(header_value)?);
-                    }
-                    HEADER_LOWER_SEND_ON_EXIT => {
-                        self.configuration.send_on_exit = header_value == "true"
-                    }
-                    HEADER_LOWER_HELP => {}
-                    _ if header_name.starts_with("X-") || header_name.starts_with("x-") => {
-                        // Thunderbird throws error if header name doesn't start with X-
-                        self.compose_details
-                            .custom_headers
-                            .push(CustomHeader::new(header_name, header_value));
-                    }
-                    _ => {
-                        unknown_headers.push(header_name.to_owned());
-                    }
-                }
+                self.process_header(header_name, header_value, &mut unknown_headers, false)?;
             } else {
                 eprintln!("ExtEditorR failed to process header {line}");
             }
             buf.clear();
         }
         if !self.configuration.allow_custom_headers {
+            // TODO: this is not ideal when it comes to meta headers, since the warning message
+            // does not contain the original forms of:
+            // 1. X-ExtEditorR: Delivery-Format: plaintext
+            // 2. X-ExtEditorR: X-ExtEditorR: foo
+            // 3. X-ExtEditorR-X-ExtEditorR: foo
             self.compose_details
                 .custom_headers
                 .drain(..)
@@ -304,6 +284,107 @@ impl Compose {
             response.configuration.total = responses_len;
         }
         Ok(responses)
+    }
+
+    fn process_header(
+        &mut self,
+        header_name: &str,
+        header_value: &str,
+        unknown_headers: &mut Vec<String>,
+        meta: bool,
+    ) -> Result<()> {
+        let header_name_lower = header_name.trim().to_lowercase();
+        let header_value = header_value.trim();
+        if header_value.is_empty() {
+            return Ok(());
+        }
+        match header_name_lower.as_str() {
+            "from" => {
+                self.compose_details.from = ComposeRecipient::from_header_value(header_value)?
+            }
+            "to" => self
+                .compose_details
+                .add_to(ComposeRecipient::from_header_value(header_value)?),
+            "cc" => self
+                .compose_details
+                .add_cc(ComposeRecipient::from_header_value(header_value)?),
+            "bcc" => self
+                .compose_details
+                .add_bcc(ComposeRecipient::from_header_value(header_value)?),
+            "reply-to" => self
+                .compose_details
+                .add_reply_to(ComposeRecipient::from_header_value(header_value)?),
+            "subject" => self.compose_details.subject = header_value.to_string(),
+            HEADER_LOWER_PRIORITY => {
+                self.compose_details.priority = Some(Priority::from_str(header_value)?)
+            }
+            HEADER_LOWER_DELIVERY_FORMAT => {
+                if let Some(delivery_format) = Self::parse_optional_header::<DeliveryFormat>(
+                    HEADER_DELIVERY_FORMAT,
+                    header_value,
+                )? {
+                    self.compose_details.delivery_format = Some(Some(delivery_format));
+                }
+            }
+            HEADER_LOWER_ATTACH_VCARD => {
+                if let Some(attach_vcard) =
+                    Self::parse_optional_header::<bool>(HEADER_ATTACH_VCARD, header_value)?
+                {
+                    self.compose_details.attach_vcard.set(attach_vcard);
+                }
+            }
+            HEADER_LOWER_DELIVERY_STATUS_NOTIFICATION => {
+                self.compose_details.delivery_status_notification =
+                    Some(bool::from_str(header_value)?);
+            }
+            HEADER_LOWER_RETURN_RECEIPT => {
+                self.compose_details.return_receipt = Some(bool::from_str(header_value)?);
+            }
+            HEADER_LOWER_ALLOW_X_HEADERS | HEADER_LOWER_ALLOW_CUSTOM_HEADERS => {
+                self.configuration.allow_custom_headers = bool::from_str(header_value)?;
+            }
+            HEADER_LOWER_X_HEADER | HEADER_LOWER_CUSTOM_HEADER => {
+                self.compose_details
+                    .custom_headers
+                    .push(Self::parse_custom_header(header_value)?);
+            }
+            HEADER_LOWER_SEND_ON_EXIT => self.configuration.send_on_exit = header_value == "true",
+            HEADER_LOWER_HELP => {}
+            HEADER_LOWER_META => {
+                let compact_headers: Vec<_> = header_value.split(',').map(str::trim).collect();
+                for compact_header in compact_headers {
+                    if let Some((compact_header_name, compact_header_value)) =
+                        compact_header.split_once(':')
+                    {
+                        self.process_header(
+                            &format!("{HEADER_META}-{compact_header_name}"),
+                            compact_header_value,
+                            unknown_headers,
+                            true,
+                        )?;
+                    } else {
+                        eprintln!("ExtEditorR failed to process header {compact_header}");
+                    }
+                }
+            }
+            _ if header_name_lower.starts_with(HEADER_LOWER_ESCAPED_META) => {
+                self.compose_details.custom_headers.push(CustomHeader::new(
+                    &header_name[HEADER_META.len() + 1..],
+                    header_value,
+                ));
+            }
+            _ if !meta && header_name_lower.starts_with("x-") => {
+                // Thunderbird throws error if header name doesn't start with X-
+                self.compose_details
+                    .custom_headers
+                    .push(CustomHeader::new(header_name, header_value));
+            }
+            _ => {
+                unknown_headers.push(header_name.to_owned());
+            }
+        }
+
+        Ok(())
     }
 
     fn compose_recipient_list_to_eml<W>(
@@ -384,9 +465,31 @@ pub struct Warning {
 #[cfg(test)]
 pub mod tests {
     use base64::Engine;
+    use regex::Regex;
 
     use super::*;
     use crate::model::thunderbird::tests::get_blank_compose_details;
+
+    macro_rules! assert_contains {
+        ($output:expr, $needle:expr) => {
+            assert!(
+                $output.contains($needle),
+                "failed to find `{}` in output:\n{}",
+                $needle,
+                $output
+            );
+        };
+    }
+    macro_rules! refute_contains {
+        ($output:expr, $needle:expr) => {
+            assert!(
+                !$output.contains($needle),
+                "unexpected `{}` found in output:\n{}",
+                $needle,
+                $output
+            );
+        };
+    }
 
     #[test]
     fn write_to_eml_test() {
@@ -401,15 +504,18 @@ pub mod tests {
         request.compose_details.plain_text_body = "Hello, world!".to_owned();
 
         let output = to_eml_and_assert(&request);
-        assert!(output.contains("From: someone@example.com"));
-        assert!(output.contains("Cc: foo@example.com"));
-        assert!(output.contains("Cc: bar@example.com"));
-        assert!(output.contains(&format!("Subject: {}", request.compose_details.subject)));
-        assert!(!output.contains(&format!("{HEADER_ATTACH_VCARD}:")));
-        assert!(!output.contains(&format!("{HEADER_PRIORITY}:")));
-        assert!(output.contains("X-ExtEditorR-Send-On-Exit: false"));
+        assert_contains!(&output, "From: someone@example.com");
+        assert_contains!(&output, "Cc: foo@example.com");
+        assert_contains!(&output, "Cc: bar@example.com");
+        assert_contains!(
+            &output,
+            &format!("Subject: {}", request.compose_details.subject)
+        );
+        refute_contains!(&output, &format!("{HEADER_ATTACH_VCARD}:"));
+        refute_contains!(&output, &format!("{HEADER_PRIORITY}:"));
+        assert_contains!(&output, "X-ExtEditorR-Send-On-Exit: false");
         assert!(output.ends_with(&request.compose_details.plain_text_body));
-        assert!(!output.contains(&request.compose_details.body));
+        refute_contains!(&output, &request.compose_details.body);
         assert_eq!(output.matches('\r').count(), output.matches('\n').count());
     }
 
@@ -420,12 +526,12 @@ pub mod tests {
         request.compose_details.plain_text_body = "Hello, world!".to_owned();
 
         let output = to_eml_and_assert(&request);
-        assert!(output.contains("From: "));
-        assert!(output.contains("To: "));
-        assert!(output.contains("Cc: "));
-        assert!(output.contains("Bcc: "));
-        assert!(output.contains("Reply-To: "));
-        assert!(output.contains("Subject: "));
+        assert_contains!(&output, "From: ");
+        assert_contains!(&output, "To: ");
+        assert_contains!(&output, "Cc: ");
+        assert_contains!(&output, "Bcc: ");
+        assert_contains!(&output, "Reply-To: ");
+        assert_contains!(&output, "Subject: ");
     }
 
     #[test]
@@ -440,8 +546,8 @@ pub mod tests {
 
         let output = to_eml_and_assert(&request);
         assert_eq!(2, output.matches("Cc:").count());
-        assert!(output.contains("Cc: foo@example.com"));
-        assert!(output.contains("Cc: bar@example.com"));
+        assert_contains!(&output, "Cc: foo@example.com");
+        assert_contains!(&output, "Cc: bar@example.com");
     }
 
     #[test]
@@ -558,15 +664,15 @@ pub mod tests {
     fn merge_delivery_format_test() {
         let mut request = get_blank_compose();
         let output = to_eml_and_assert(&request);
-        assert!(!output.contains("X-ExtEditorR-Delivery-Format:"));
+        refute_contains!(&output, "X-ExtEditorR-Delivery-Format:");
 
         request.compose_details.delivery_format = Some(None);
         let output = to_eml_and_assert(&request);
-        assert!(output.contains("X-ExtEditorR-Delivery-Format: [auto]"));
+        assert_contains!(&output, "X-ExtEditorR-Delivery-Format: [auto]");
 
         request.compose_details.delivery_format = Some(Some(DeliveryFormat::Both));
         let output = to_eml_and_assert(&request);
-        assert!(output.contains("X-ExtEditorR-Delivery-Format: [both]"));
+        assert_contains!(&output, "X-ExtEditorR-Delivery-Format: [both]");
 
         let mut eml = "X-ExtEditorR-Delivery-Format: [hello]\r\n\r\nThis is a test.\r\n".as_bytes();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
@@ -605,7 +711,7 @@ pub mod tests {
         request.compose_details.priority = Some(Priority::Normal);
 
         let output = to_eml_and_assert(&request);
-        assert!(output.contains("X-ExtEditorR-Priority: normal"));
+        assert_contains!(&output, "X-ExtEditorR-Priority: normal");
 
         let mut eml = "X-ExtEditorR-Priority: high\r\n\r\nThis is a test.\r\n".as_bytes();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
@@ -622,7 +728,7 @@ pub mod tests {
         request.compose_details.attach_vcard = TrackedOptionBool::new(false);
 
         let output = to_eml_and_assert(&request);
-        assert!(output.contains("X-ExtEditorR-Attach-vCard: [false]"));
+        assert_contains!(&output, "X-ExtEditorR-Attach-vCard: [false]");
 
         let mut eml = "X-ExtEditorR-Attach-vCard: [false]\r\n\r\nThis is a test.\r\n".as_bytes();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
@@ -652,11 +758,11 @@ pub mod tests {
         let mut request = get_blank_compose();
 
         let output = to_eml_and_assert(&request);
-        assert!(!output.contains("X-ExtEditorR-Delivery-Status-Notification:"));
+        refute_contains!(&output, "X-ExtEditorR-Delivery-Status-Notification:");
 
         request.compose_details.delivery_status_notification = Some(false);
         let output = to_eml_and_assert(&request);
-        assert!(output.contains("X-ExtEditorR-Delivery-Status-Notification: false"));
+        assert_contains!(&output, "X-ExtEditorR-Delivery-Status-Notification: false");
 
         let mut eml =
             "X-ExtEditorR-Delivery-Status-Notification: true\r\n\r\nThis is a test.\r\n".as_bytes();
@@ -673,11 +779,11 @@ pub mod tests {
         let mut request = get_blank_compose();
 
         let output = to_eml_and_assert(&request);
-        assert!(!output.contains("X-ExtEditorR-Return-Receipt:"));
+        refute_contains!(&output, "X-ExtEditorR-Return-Receipt:");
 
         request.compose_details.return_receipt = Some(false);
         let output = to_eml_and_assert(&request);
-        assert!(output.contains("X-ExtEditorR-Return-Receipt: false"));
+        assert_contains!(&output, "X-ExtEditorR-Return-Receipt: false");
 
         let mut eml = "X-ExtEditorR-Return-Receipt: true\r\n\r\nThis is a test.\r\n".as_bytes();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
@@ -692,6 +798,25 @@ pub mod tests {
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
         assert!(responses[0].configuration.send_on_exit);
+    }
+
+    #[test]
+    fn merge_meta_delivery_format_and_send_on_exit_test() {
+        let mut eml = "X-ExtEditorR: Delivery-Format: plaintext, Send-On-Exit: true\r\n\r\nThis is a test.\r\n".as_bytes();
+        let mut request = get_blank_compose();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert!(responses[0].configuration.send_on_exit);
+        assert_eq!(
+            &DeliveryFormat::PlainText,
+            responses[0]
+                .compose_details
+                .delivery_format
+                .as_ref()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+        );
     }
 
     #[test]
@@ -714,11 +839,11 @@ pub mod tests {
         let mut request = get_blank_compose();
 
         let output = to_eml_and_assert(&request);
-        assert!(output.contains("X-ExtEditorR-Allow-X-Headers: false"));
+        assert_contains!(&output, "X-ExtEditorR-Allow-X-Headers: false");
 
         request.configuration.allow_custom_headers = true;
         let output = to_eml_and_assert(&request);
-        assert!(output.contains("X-ExtEditorR-Allow-X-Headers: true"));
+        assert_contains!(&output, "X-ExtEditorR-Allow-X-Headers: true");
 
         request.compose_details.custom_headers.push(CustomHeader {
             name: "X-Foo".to_owned(),
@@ -726,8 +851,8 @@ pub mod tests {
         });
         request.configuration.allow_custom_headers = false;
         let output = to_eml_and_assert(&request);
-        assert!(output.contains("X-ExtEditorR-Allow-X-Headers: true"));
-        assert!(output.contains("X-Foo: Hello, world!"));
+        assert_contains!(&output, "X-ExtEditorR-Allow-X-Headers: true");
+        assert_contains!(&output, "X-Foo: Hello, world!");
 
         let mut eml =
             "X-Bar: Hello\r\nX-ExtEditorR-Allow-X-Headers: true\r\n\r\nThis is a test.\r\n"
@@ -806,6 +931,110 @@ pub mod tests {
     }
 
     #[test]
+    fn avoid_adding_meta_headers_to_custom_headers_test() {
+        let mut eml = "X-ExtEditorR: Allow-X-Headers: true, Foo: bar, X-Bar: world\r\nX-Foo: bar\r\n\r\nThis is a test.\r\n".as_bytes();
+        let mut request = get_blank_compose();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(1, responses[0].warnings.len());
+        assert_eq!("Unknown header(s) found", responses[0].warnings[0].title);
+        assert_eq!(
+            "ExtEditorR did not recognise the following headers:\n- X-ExtEditorR-Foo\n- X-ExtEditorR-X-Bar",
+            responses[0].warnings[0].message
+        );
+        assert!(responses[0].configuration.allow_custom_headers);
+        assert_eq!(1, responses[0].compose_details.custom_headers.len());
+        assert_eq!(
+            "X-Foo",
+            &responses[0].compose_details.custom_headers[0].name
+        );
+        assert_eq!("bar", &responses[0].compose_details.custom_headers[0].value);
+    }
+
+    #[test]
+    fn escaped_meta_headers_printing_test() {
+        let mut request = get_blank_compose();
+        request.compose_details.custom_headers.push(CustomHeader {
+            name: "X-ExtEditorR".to_owned(),
+            value: "test".to_owned(),
+        });
+        request.compose_details.custom_headers.push(CustomHeader {
+            name: "X-ExtEditorR-Foo".to_owned(),
+            value: "hello".to_owned(),
+        });
+        request.compose_details.custom_headers.push(CustomHeader {
+            name: "X-Exteditorr-Bar".to_owned(), // cspell: disable-line
+            value: "world".to_owned(),
+        });
+        let output = to_eml_and_assert(&request);
+        let lines: Vec<_> = output.lines().collect();
+        assert_contains!(&output, "X-ExtEditorR-Allow-X-Headers: true");
+        assert_contains!(&output, "X-ExtEditorR-X-ExtEditorR: test");
+        assert_contains!(&output, "X-ExtEditorR-X-ExtEditorR-Foo: hello");
+        assert_contains!(&output, "X-ExtEditorR-X-ExtEditorR-Bar: world");
+        assert!(!lines.contains(&"X-ExtEditorR: test"));
+        assert!(!lines.contains(&"X-ExtEditorR-Foo: hello"));
+        assert!(!lines.contains(&"X-ExtEditorR-Bar: world"));
+
+        request.configuration.meta_headers = true;
+        let output = to_eml_and_assert(&request);
+        let lines: Vec<_> = output.lines().collect();
+        let re = Regex::new(r"^X-ExtEditorR:.*X-ExtEditorR:\s*test").unwrap();
+        assert!(
+            lines.iter().any(|line| re.is_match(line)),
+            "failed to find escaped header `X-ExtEditorR: test` in output:\n{output}"
+        );
+        let re = Regex::new(r"^X-ExtEditorR:.*X-ExtEditorR-Foo:\s*hello").unwrap();
+        assert!(
+            lines.iter().any(|line| re.is_match(line)),
+            "failed to find escaped header `X-ExtEditorR-Foo: hello` in output:\n{output}"
+        );
+        let re = Regex::new(r"^X-ExtEditorR:.*X-ExtEditorR-Bar:\s*world").unwrap();
+        assert!(
+            lines.iter().any(|line| re.is_match(line)),
+            "failed to find escaped header `X-ExtEditorR-Bar: world` in output:\n{output}"
+        );
+        assert!(!lines.contains(&"X-ExtEditorR: test"));
+        assert!(!lines.contains(&"X-ExtEditorR-Foo: hello"));
+        assert!(!lines.contains(&"X-ExtEditorR-Bar: world"));
+    }
+
+    #[test]
+    fn escaped_meta_headers_parsing_test() {
+        let mut eml = "X-ExtEditorR: Allow-X-Headers: true, X-ExtEditorR: foo\r\nX-ExtEditorR-X-ExtEditorR-Hello: world\r\n\r\nThis is a test.\r\n".as_bytes();
+        let mut request = get_blank_compose();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(0, responses[0].warnings.len());
+        assert!(responses[0].configuration.allow_custom_headers);
+        assert_eq!(2, responses[0].compose_details.custom_headers.len());
+        assert_eq!(
+            "X-ExtEditorR",
+            &responses[0].compose_details.custom_headers[0].name
+        );
+        assert_eq!("foo", &responses[0].compose_details.custom_headers[0].value);
+        assert_eq!(
+            "X-ExtEditorR-Hello",
+            &responses[0].compose_details.custom_headers[1].name
+        );
+        assert_eq!(
+            "world",
+            &responses[0].compose_details.custom_headers[1].value
+        );
+
+        let mut eml = "X-ExtEditorR: Allow-X-Headers: false, X-ExtEditorR: foo\r\nX-ExtEditorR-X-ExtEditorR-Hello: world\r\n\r\nThis is a test.\r\n".as_bytes();
+        let mut request = get_blank_compose();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(1, responses[0].warnings.len());
+        assert_eq!("Unknown header(s) found", responses[0].warnings[0].title);
+        assert_eq!(
+            "ExtEditorR did not recognise the following headers:\n- X-ExtEditorR\n- X-ExtEditorR-Hello",
+            responses[0].warnings[0].message
+        );
+    }
+
+    #[test]
     fn delete_send_on_exit_header_test() {
         let mut eml = "Subject: Hello\r\n\r\nThis is a test.\r\n".as_bytes();
         let mut request = get_blank_compose();
@@ -850,11 +1079,11 @@ pub mod tests {
     fn help_headers_test() {
         let mut request = get_blank_compose();
         let output = to_eml_and_assert(&request);
-        assert!(output.contains("X-ExtEditorR-Help"));
+        assert_contains!(&output, "X-ExtEditorR-Help");
 
         request.configuration.suppress_help_headers = true;
         let output = to_eml_and_assert(&request);
-        assert!(!output.contains("X-ExtEditorR-Help"));
+        refute_contains!(&output, "X-ExtEditorR-Help");
     }
 
     fn to_eml_and_assert(compose: &Compose) -> String {
@@ -875,6 +1104,7 @@ pub mod tests {
                 temporary_directory: "".to_owned(),
                 send_on_exit: false,
                 suppress_help_headers: false,
+                meta_headers: false,
                 allow_custom_headers: false,
                 bypass_version_check: false,
             },

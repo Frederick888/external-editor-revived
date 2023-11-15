@@ -15,3 +15,4 @@ webextension-native-messaging = "1.0.1"
 [dev-dependencies]
 base64 = "0.21.0"
 mockall = "0.11.3"
+regex = "1.10.2"

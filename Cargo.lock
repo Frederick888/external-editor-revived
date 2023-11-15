@@ -66,6 +66,7 @@ dependencies = [
  "anyhow",
  "base64",
  "mockall",
+ "regex",
  "serde",
  "serde_json",
  "strum",
