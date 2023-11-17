@@ -142,18 +142,17 @@ impl Compose {
             "{HEADER_SEND_ON_EXIT}: {}",
             self.configuration.send_on_exit
         ));
-        let need_escaping = |custom_header: &&CustomHeader| -> bool {
-            custom_header
-                .name
-                .to_lowercase()
-                .starts_with(HEADER_LOWER_META)
-        };
-        for custom_header in self
+        let (meta_custom_headers, regular_custom_headers): (Vec<_>, Vec<_>) = self
             .compose_details
             .custom_headers
             .iter()
-            .filter(need_escaping)
-        {
+            .partition(|custom_header| {
+                custom_header
+                    .name
+                    .to_lowercase()
+                    .starts_with(HEADER_LOWER_META)
+            });
+        for custom_header in meta_custom_headers {
             headers.push(format!(
                 "{}-{}: {}",
                 HEADER_META,
@@ -178,12 +177,7 @@ impl Compose {
             }
         }
 
-        for custom_header in self
-            .compose_details
-            .custom_headers
-            .iter()
-            .filter(|custom_header| !need_escaping(custom_header))
-        {
+        for custom_header in regular_custom_headers {
             writeln_crlf!(w, "{}: {}", custom_header.name, custom_header.value)?;
         }
         if !self.configuration.suppress_help_headers {
