@@ -20,6 +20,8 @@ const HEADER_ATTACH_VCARD: &str = "X-ExtEditorR-Attach-vCard";
 const HEADER_LOWER_ATTACH_VCARD: &str = "x-exteditorr-attach-vcard"; // cspell: disable-line
 const HEADER_DELIVERY_STATUS_NOTIFICATION: &str = "X-ExtEditorR-Delivery-Status-Notification";
 const HEADER_LOWER_DELIVERY_STATUS_NOTIFICATION: &str = "x-exteditorr-delivery-status-notification"; // cspell: disable-line
+const HEADER_DSN: &str = "X-ExtEditorR-DSN";
+const HEADER_LOWER_DSN: &str = "x-exteditorr-dsn"; // cspell: disable-line
 const HEADER_RETURN_RECEIPT: &str = "X-ExtEditorR-Return-Receipt";
 const HEADER_LOWER_RETURN_RECEIPT: &str = "x-exteditorr-return-receipt"; // cspell: disable-line
 const HEADER_SEND_ON_EXIT: &str = "X-ExtEditorR-Send-On-Exit";
@@ -126,9 +128,12 @@ impl Compose {
         if let Some(delivery_status_notification) =
             self.compose_details.delivery_status_notification
         {
-            headers.push(format!(
-                "{HEADER_DELIVERY_STATUS_NOTIFICATION}: {delivery_status_notification}"
-            ));
+            let header_dsn_name = if self.configuration.meta_headers {
+                HEADER_DSN
+            } else {
+                HEADER_DELIVERY_STATUS_NOTIFICATION
+            };
+            headers.push(format!("{header_dsn_name}: {delivery_status_notification}"));
         }
         if let Some(return_receipt) = self.compose_details.return_receipt {
             headers.push(format!("{HEADER_RETURN_RECEIPT}: {return_receipt}"));
@@ -327,7 +332,7 @@ impl Compose {
                     self.compose_details.attach_vcard.set(attach_vcard);
                 }
             }
-            HEADER_LOWER_DELIVERY_STATUS_NOTIFICATION => {
+            HEADER_LOWER_DELIVERY_STATUS_NOTIFICATION | HEADER_LOWER_DSN => {
                 self.compose_details.delivery_status_notification =
                     Some(bool::from_str(header_value)?);
             }
@@ -748,18 +753,58 @@ pub mod tests {
     }
 
     #[test]
-    fn merge_delivery_status_notification_test() {
+    fn delivery_status_notification_printing_test() {
         let mut request = get_blank_compose();
 
         let output = to_eml_and_assert(&request);
         refute_contains!(&output, "X-ExtEditorR-Delivery-Status-Notification:");
+        refute_contains!(&output, "DSN");
 
         request.compose_details.delivery_status_notification = Some(false);
         let output = to_eml_and_assert(&request);
         assert_contains!(&output, "X-ExtEditorR-Delivery-Status-Notification: false");
+        refute_contains!(&output, "DSN");
+
+        request.configuration.meta_headers = true;
+        request.compose_details.delivery_status_notification = Some(true);
+        let output = to_eml_and_assert(&request);
+        let lines: Vec<_> = output.lines().collect();
+        let re = Regex::new(r"^X-ExtEditorR:.*DSN:\s*true").unwrap();
+        assert!(
+            lines.iter().any(|line| re.is_match(line)),
+            "failed to find header `X-ExtEditorR: DSN: true` in output:\n{output}"
+        );
+        refute_contains!(&output, "Delivery-Status-Notification");
+    }
+
+    #[test]
+    fn merge_delivery_status_notification_test() {
+        let mut request = get_blank_compose();
 
         let mut eml =
             "X-ExtEditorR-Delivery-Status-Notification: true\r\n\r\nThis is a test.\r\n".as_bytes();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(
+            Some(true),
+            responses[0].compose_details.delivery_status_notification
+        );
+    }
+
+    #[test]
+    fn merge_dsn_test() {
+        let mut request = get_blank_compose();
+
+        let mut eml = "X-ExtEditorR-DSN: true\r\n\r\nThis is a test.\r\n".as_bytes();
+        let responses = request.merge_from_eml(&mut eml, 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(
+            Some(true),
+            responses[0].compose_details.delivery_status_notification
+        );
+
+        let mut request = get_blank_compose();
+        let mut eml = "X-ExtEditorR: DSN: true\r\n\r\nThis is a test.\r\n".as_bytes();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
         assert_eq!(
