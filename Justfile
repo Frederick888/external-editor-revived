@@ -1,5 +1,7 @@
 set shell := ["bash", "+u", "-c"]
 
+alias cov := coverage
+
 default:
     cargo fmt -- --check
     cargo clippy --locked
@@ -55,5 +57,17 @@ release version:
     git diff --exit-code
     git commit -m 'chore: Bump version to {{version}}'
     git tag v{{version}}
+
+coverage:
+    env CARGO_INCREMENTAL=0 RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort" \
+        RUSTDOCFLAGS="-Cpanic=abort" cargo +nightly build
+    env CARGO_INCREMENTAL=0 RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort" \
+        RUSTDOCFLAGS="-Cpanic=abort" cargo +nightly test
+    grcov ./target/debug/ -s . -t html --llvm --branch --ignore-not-existing -o ./target/debug/coverage/
+    if command -v xdg-open 2>&1 >/dev/null; then \
+        xdg-open ./target/debug/coverage/index.html; \
+    elif command -v open 2>&1 >/dev/null; then \
+        open ./target/debug/coverage/index.html; \
+    fi
 
 # vim: set filetype=just :
