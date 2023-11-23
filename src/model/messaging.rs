@@ -147,7 +147,7 @@ impl Compose {
             "{HEADER_SEND_ON_EXIT}: {}",
             self.configuration.send_on_exit
         ));
-        let (meta_custom_headers, regular_custom_headers): (Vec<_>, Vec<_>) = self
+        let (meta_custom_headers, other_custom_headers): (Vec<_>, Vec<_>) = self
             .compose_details
             .custom_headers
             .iter()
@@ -156,6 +156,8 @@ impl Compose {
                     .name
                     .to_lowercase()
                     .starts_with(HEADER_LOWER_META)
+                    && !custom_header.value.contains(',')
+                    && !custom_header.value.contains(':')
             });
         for custom_header in meta_custom_headers {
             headers.push(format!(
@@ -182,8 +184,25 @@ impl Compose {
             }
         }
 
-        for custom_header in regular_custom_headers {
-            writeln_crlf!(w, "{}: {}", custom_header.name, custom_header.value)?;
+        for custom_header in other_custom_headers {
+            if custom_header
+                .name
+                .to_lowercase()
+                .starts_with(HEADER_LOWER_META)
+            {
+                let header_name = custom_header
+                    .name
+                    .replace(HEADER_NORMALISED_META, HEADER_META);
+                writeln_crlf!(
+                    w,
+                    "{}-{}: {}",
+                    HEADER_META,
+                    header_name,
+                    custom_header.value
+                )?;
+            } else {
+                writeln_crlf!(w, "{}: {}", custom_header.name, custom_header.value)?;
+            }
         }
         if !self.configuration.suppress_help_headers {
             Self::write_help_headers(w)?;
@@ -1088,6 +1107,57 @@ pub mod tests {
         assert_eq!(
             "ExtEditorR did not recognise the following headers:\n- X-ExtEditorR\n- X-ExtEditorR-Hello",
             responses[0].warnings[0].message
+        );
+    }
+
+    #[test]
+    fn escaped_meta_headers_with_special_chars_test() {
+        let mut request = get_blank_compose();
+        request.configuration.allow_custom_headers = true;
+        request.configuration.meta_headers = true;
+        request.compose_details.custom_headers.push(CustomHeader {
+            name: "X-Exteditorr-Foo".to_string(), // cspell: disable-line
+            value: "bar, X-ExtEditorR: world, Priority: high".to_string(),
+        });
+        request.compose_details.custom_headers.push(CustomHeader {
+            name: "X-ExtEditorR1".to_string(),
+            value: "bar, X-Hello: world".to_string(),
+        });
+        request.compose_details.custom_headers.push(CustomHeader {
+            name: "X-Foo".to_string(),
+            value: "bar, X-Hello: world".to_string(),
+        });
+
+        let output = to_eml_and_assert(&request);
+        let responses = {
+            let mut request = request.clone();
+            let mut output = output.as_bytes();
+            request.merge_from_eml(&mut output, 512).unwrap()
+        };
+
+        assert_eq!(1, responses.len());
+        assert_eq!(0, responses[0].warnings.len());
+        assert_contains!(output, "X-ExtEditorR-X-ExtEditorR-Foo:");
+        assert_contains!(output, "X-ExtEditorR-X-ExtEditorR1:");
+        assert_eq!(
+            request.compose_details.priority,
+            responses[0].compose_details.priority
+        );
+        assert_eq!(3, responses[0].compose_details.custom_headers.len());
+        assert_eq!(
+            CustomHeader {
+                name: "X-ExtEditorR-Foo".to_string(),
+                value: "bar, X-ExtEditorR: world, Priority: high".to_string(),
+            },
+            responses[0].compose_details.custom_headers[0]
+        );
+        assert_eq!(
+            request.compose_details.custom_headers[1],
+            responses[0].compose_details.custom_headers[1]
+        );
+        assert_eq!(
+            request.compose_details.custom_headers[2],
+            responses[0].compose_details.custom_headers[2]
         );
     }
 
