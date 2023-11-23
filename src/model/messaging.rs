@@ -215,7 +215,7 @@ impl Compose {
                 break;
             }
             if let Some((header_name, header_value)) = line.split_once(':') {
-                self.process_header(header_name, header_value, &mut unknown_headers, false)?;
+                self.process_header(header_name, header_value, &mut unknown_headers)?;
             } else {
                 eprintln!("ExtEditorR failed to process header {line}");
             }
@@ -290,7 +290,6 @@ impl Compose {
         header_name: &str,
         header_value: &str,
         unknown_headers: &mut Vec<String>,
-        meta: bool,
     ) -> Result<()> {
         let header_name_lower = header_name.trim().to_lowercase();
         let header_value = header_value.trim();
@@ -359,7 +358,6 @@ impl Compose {
                             &format!("{HEADER_META}-{compact_header_name}"),
                             compact_header_value,
                             unknown_headers,
-                            true,
                         )?;
                     } else {
                         eprintln!("ExtEditorR failed to process header {compact_header}");
@@ -372,7 +370,9 @@ impl Compose {
                     header_value,
                 ));
             }
-            _ if !meta && header_name_lower.starts_with("x-") => {
+            _ if header_name_lower.starts_with("x-")
+                && !header_name_lower.starts_with(HEADER_LOWER_META) =>
+            {
                 // Thunderbird throws error if header name doesn't start with X-
                 self.compose_details
                     .custom_headers
@@ -967,7 +967,7 @@ pub mod tests {
     }
 
     #[test]
-    fn avoid_adding_meta_headers_to_custom_headers_test() {
+    fn avoid_adding_meta_headers_without_prefix_to_custom_headers_test() {
         let mut eml = "X-ExtEditorR: Allow-X-Headers: true, Foo: bar, X-Bar: world\r\nX-Foo: bar\r\n\r\nThis is a test.\r\n".as_bytes();
         let mut request = get_blank_compose();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
@@ -982,6 +982,30 @@ pub mod tests {
         assert_eq!(1, responses[0].compose_details.custom_headers.len());
         assert_eq!("X-Foo", responses[0].compose_details.custom_headers[0].name);
         assert_eq!("bar", responses[0].compose_details.custom_headers[0].value);
+    }
+
+    #[test]
+    fn avoid_adding_unescaped_meta_headers_to_custom_headers_test() {
+        let eml = [
+            "X-ExtEditorR: Allow-X-Headers: true",
+            "X-ExtEditorR1: bar",
+            "X-ExtEditorR2-Foo: bar",
+            "X-ExtEditorR-Foo: bar",
+            "",
+            "This is a test.",
+            "",
+        ]
+        .join("\r\n");
+        let mut request = get_blank_compose();
+        let responses = request.merge_from_eml(&mut eml.as_bytes(), 512).unwrap();
+        assert_eq!(1, responses.len());
+        assert_eq!(1, responses[0].warnings.len());
+        assert_eq!("Unknown header(s) found", responses[0].warnings[0].title);
+        assert_eq!(
+            "ExtEditorR did not recognise the following headers:\n- X-ExtEditorR1\n- X-ExtEditorR2-Foo\n- X-ExtEditorR-Foo",
+            responses[0].warnings[0].message
+        );
+        assert_eq!(0, responses[0].compose_details.custom_headers.len());
     }
 
     #[test]
