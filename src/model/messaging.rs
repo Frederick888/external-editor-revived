@@ -503,18 +503,18 @@ pub mod tests {
         request.compose_details.plain_text_body = "Hello, world!".to_owned();
 
         let output = to_eml_and_assert(&request);
-        assert_contains!(&output, "From: someone@example.com");
-        assert_contains!(&output, "Cc: foo@example.com");
-        assert_contains!(&output, "Cc: bar@example.com");
+        assert_contains!(output, "From: someone@example.com");
+        assert_contains!(output, "Cc: foo@example.com");
+        assert_contains!(output, "Cc: bar@example.com");
         assert_contains!(
-            &output,
+            output,
             &format!("Subject: {}", request.compose_details.subject)
         );
-        refute_contains!(&output, &format!("{HEADER_ATTACH_VCARD}:"));
-        refute_contains!(&output, &format!("{HEADER_PRIORITY}:"));
-        assert_contains!(&output, "X-ExtEditorR-Send-On-Exit: false");
+        refute_contains!(output, &format!("{HEADER_ATTACH_VCARD}:"));
+        refute_contains!(output, &format!("{HEADER_PRIORITY}:"));
+        assert_contains!(output, "X-ExtEditorR-Send-On-Exit: false");
         assert!(output.ends_with(&request.compose_details.plain_text_body));
-        refute_contains!(&output, &request.compose_details.body);
+        refute_contains!(output, &request.compose_details.body);
         assert_eq!(output.matches('\r').count(), output.matches('\n').count());
     }
 
@@ -525,12 +525,12 @@ pub mod tests {
         request.compose_details.plain_text_body = "Hello, world!".to_owned();
 
         let output = to_eml_and_assert(&request);
-        assert_contains!(&output, "From: ");
-        assert_contains!(&output, "To: ");
-        assert_contains!(&output, "Cc: ");
-        assert_contains!(&output, "Bcc: ");
-        assert_contains!(&output, "Reply-To: ");
-        assert_contains!(&output, "Subject: ");
+        assert_contains!(output, "From: ");
+        assert_contains!(output, "To: ");
+        assert_contains!(output, "Cc: ");
+        assert_contains!(output, "Bcc: ");
+        assert_contains!(output, "Reply-To: ");
+        assert_contains!(output, "Subject: ");
     }
 
     #[test]
@@ -545,8 +545,8 @@ pub mod tests {
 
         let output = to_eml_and_assert(&request);
         assert_eq!(2, output.matches("Cc:").count());
-        assert_contains!(&output, "Cc: foo@example.com");
-        assert_contains!(&output, "Cc: bar@example.com");
+        assert_contains!(output, "Cc: foo@example.com");
+        assert_contains!(output, "Cc: bar@example.com");
     }
 
     #[test]
@@ -556,10 +556,10 @@ pub mod tests {
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
         assert_eq!(1, responses.len());
         assert!(responses[0].warnings.is_empty());
-        assert_eq!("Hello, world!", &responses[0].compose_details.subject);
+        assert_eq!("Hello, world!", responses[0].compose_details.subject);
         assert_eq!(
             "This is a test.\r\n",
-            &responses[0].compose_details.plain_text_body
+            responses[0].compose_details.plain_text_body
         );
     }
 
@@ -650,28 +650,28 @@ pub mod tests {
         assert_eq!(3, responses.len());
         assert_eq!(
             "Hello, world! ",
-            &responses[0].compose_details.plain_text_body
+            responses[0].compose_details.plain_text_body
         );
         assert_eq!(
             "Hello, world! ",
-            &responses[1].compose_details.plain_text_body
+            responses[1].compose_details.plain_text_body
         );
-        assert_eq!("Hello!\r\n", &responses[2].compose_details.plain_text_body);
+        assert_eq!("Hello!\r\n", responses[2].compose_details.plain_text_body);
     }
 
     #[test]
     fn merge_delivery_format_test() {
         let mut request = get_blank_compose();
         let output = to_eml_and_assert(&request);
-        refute_contains!(&output, "X-ExtEditorR-Delivery-Format:");
+        refute_contains!(output, "X-ExtEditorR-Delivery-Format:");
 
         request.compose_details.delivery_format = Some(None);
         let output = to_eml_and_assert(&request);
-        assert_contains!(&output, "X-ExtEditorR-Delivery-Format: [auto]");
+        assert_contains!(output, "X-ExtEditorR-Delivery-Format: [auto]");
 
         request.compose_details.delivery_format = Some(Some(DeliveryFormat::Both));
         let output = to_eml_and_assert(&request);
-        assert_contains!(&output, "X-ExtEditorR-Delivery-Format: [both]");
+        assert_contains!(output, "X-ExtEditorR-Delivery-Format: [both]");
 
         let mut eml = "X-ExtEditorR-Delivery-Format: [hello]\r\n\r\nThis is a test.\r\n".as_bytes();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
@@ -710,7 +710,7 @@ pub mod tests {
         request.compose_details.priority = Some(Priority::Normal);
 
         let output = to_eml_and_assert(&request);
-        assert_contains!(&output, "X-ExtEditorR-Priority: normal");
+        assert_contains!(output, "X-ExtEditorR-Priority: normal");
 
         let mut eml = "X-ExtEditorR-Priority: high\r\n\r\nThis is a test.\r\n".as_bytes();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
@@ -727,7 +727,7 @@ pub mod tests {
         request.compose_details.attach_vcard = TrackedOptionBool::new(false);
 
         let output = to_eml_and_assert(&request);
-        assert_contains!(&output, "X-ExtEditorR-Attach-vCard: [false]");
+        assert_contains!(output, "X-ExtEditorR-Attach-vCard: [false]");
 
         let mut eml = "X-ExtEditorR-Attach-vCard: [false]\r\n\r\nThis is a test.\r\n".as_bytes();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
@@ -757,13 +757,13 @@ pub mod tests {
         let mut request = get_blank_compose();
 
         let output = to_eml_and_assert(&request);
-        refute_contains!(&output, "X-ExtEditorR-Delivery-Status-Notification:");
-        refute_contains!(&output, "DSN");
+        refute_contains!(output, "X-ExtEditorR-Delivery-Status-Notification:");
+        refute_contains!(output, "DSN");
 
         request.compose_details.delivery_status_notification = Some(false);
         let output = to_eml_and_assert(&request);
-        assert_contains!(&output, "X-ExtEditorR-Delivery-Status-Notification: false");
-        refute_contains!(&output, "DSN");
+        assert_contains!(output, "X-ExtEditorR-Delivery-Status-Notification: false");
+        refute_contains!(output, "DSN");
 
         request.configuration.meta_headers = true;
         request.compose_details.delivery_status_notification = Some(true);
@@ -774,7 +774,7 @@ pub mod tests {
             lines.iter().any(|line| re.is_match(line)),
             "failed to find header `X-ExtEditorR: DSN: true` in output:\n{output}"
         );
-        refute_contains!(&output, "Delivery-Status-Notification");
+        refute_contains!(output, "Delivery-Status-Notification");
     }
 
     #[test]
@@ -818,11 +818,11 @@ pub mod tests {
         let mut request = get_blank_compose();
 
         let output = to_eml_and_assert(&request);
-        refute_contains!(&output, "X-ExtEditorR-Return-Receipt:");
+        refute_contains!(output, "X-ExtEditorR-Return-Receipt:");
 
         request.compose_details.return_receipt = Some(false);
         let output = to_eml_and_assert(&request);
-        assert_contains!(&output, "X-ExtEditorR-Return-Receipt: false");
+        assert_contains!(output, "X-ExtEditorR-Return-Receipt: false");
 
         let mut eml = "X-ExtEditorR-Return-Receipt: true\r\n\r\nThis is a test.\r\n".as_bytes();
         let responses = request.merge_from_eml(&mut eml, 512).unwrap();
@@ -878,11 +878,11 @@ pub mod tests {
         let mut request = get_blank_compose();
 
         let output = to_eml_and_assert(&request);
-        assert_contains!(&output, "X-ExtEditorR-Allow-X-Headers: false");
+        assert_contains!(output, "X-ExtEditorR-Allow-X-Headers: false");
 
         request.configuration.allow_custom_headers = true;
         let output = to_eml_and_assert(&request);
-        assert_contains!(&output, "X-ExtEditorR-Allow-X-Headers: true");
+        assert_contains!(output, "X-ExtEditorR-Allow-X-Headers: true");
 
         request.compose_details.custom_headers.push(CustomHeader {
             name: "X-Foo".to_owned(),
@@ -890,8 +890,8 @@ pub mod tests {
         });
         request.configuration.allow_custom_headers = false;
         let output = to_eml_and_assert(&request);
-        assert_contains!(&output, "X-ExtEditorR-Allow-X-Headers: true");
-        assert_contains!(&output, "X-Foo: Hello, world!");
+        assert_contains!(output, "X-ExtEditorR-Allow-X-Headers: true");
+        assert_contains!(output, "X-Foo: Hello, world!");
 
         let mut eml =
             "X-Bar: Hello\r\nX-ExtEditorR-Allow-X-Headers: true\r\n\r\nThis is a test.\r\n"
@@ -901,13 +901,10 @@ pub mod tests {
         assert_eq!(1, responses.len());
         assert!(responses[0].warnings.is_empty());
         assert_eq!(1, responses[0].compose_details.custom_headers.len());
-        assert_eq!(
-            "X-Bar",
-            &responses[0].compose_details.custom_headers[0].name
-        );
+        assert_eq!("X-Bar", responses[0].compose_details.custom_headers[0].name);
         assert_eq!(
             "Hello",
-            &responses[0].compose_details.custom_headers[0].value
+            responses[0].compose_details.custom_headers[0].value
         );
 
         let eml = [
@@ -928,19 +925,19 @@ pub mod tests {
         assert_eq!(2, responses[0].compose_details.custom_headers.len());
         assert_eq!(
             "X-ExtEditorR-Send-On-Exit",
-            &responses[0].compose_details.custom_headers[0].name
+            responses[0].compose_details.custom_headers[0].name
         );
         assert_eq!(
             "Hello",
-            &responses[0].compose_details.custom_headers[0].value
+            responses[0].compose_details.custom_headers[0].value
         );
         assert_eq!(
             "X-ExtEditorR-X-Header",
-            &responses[0].compose_details.custom_headers[1].name
+            responses[0].compose_details.custom_headers[1].name
         );
         assert_eq!(
             "Hello",
-            &responses[0].compose_details.custom_headers[1].value
+            responses[0].compose_details.custom_headers[1].value
         );
 
         let mut eml = "X-Bar: Hello\r\n\r\nThis is a test.\r\n".as_bytes();
@@ -983,11 +980,8 @@ pub mod tests {
         );
         assert!(responses[0].configuration.allow_custom_headers);
         assert_eq!(1, responses[0].compose_details.custom_headers.len());
-        assert_eq!(
-            "X-Foo",
-            &responses[0].compose_details.custom_headers[0].name
-        );
-        assert_eq!("bar", &responses[0].compose_details.custom_headers[0].value);
+        assert_eq!("X-Foo", responses[0].compose_details.custom_headers[0].name);
+        assert_eq!("bar", responses[0].compose_details.custom_headers[0].value);
     }
 
     #[test]
@@ -1007,10 +1001,10 @@ pub mod tests {
         });
         let output = to_eml_and_assert(&request);
         let lines: Vec<_> = output.lines().collect();
-        assert_contains!(&output, "X-ExtEditorR-Allow-X-Headers: true");
-        assert_contains!(&output, "X-ExtEditorR-X-ExtEditorR: test");
-        assert_contains!(&output, "X-ExtEditorR-X-ExtEditorR-Foo: hello");
-        assert_contains!(&output, "X-ExtEditorR-X-ExtEditorR-Bar: world");
+        assert_contains!(output, "X-ExtEditorR-Allow-X-Headers: true");
+        assert_contains!(output, "X-ExtEditorR-X-ExtEditorR: test");
+        assert_contains!(output, "X-ExtEditorR-X-ExtEditorR-Foo: hello");
+        assert_contains!(output, "X-ExtEditorR-X-ExtEditorR-Bar: world");
         assert!(!lines.contains(&"X-ExtEditorR: test"));
         assert!(!lines.contains(&"X-ExtEditorR-Foo: hello"));
         assert!(!lines.contains(&"X-ExtEditorR-Bar: world"));
@@ -1049,16 +1043,16 @@ pub mod tests {
         assert_eq!(2, responses[0].compose_details.custom_headers.len());
         assert_eq!(
             "X-ExtEditorR",
-            &responses[0].compose_details.custom_headers[0].name
+            responses[0].compose_details.custom_headers[0].name
         );
-        assert_eq!("foo", &responses[0].compose_details.custom_headers[0].value);
+        assert_eq!("foo", responses[0].compose_details.custom_headers[0].value);
         assert_eq!(
             "X-ExtEditorR-Hello",
-            &responses[0].compose_details.custom_headers[1].name
+            responses[0].compose_details.custom_headers[1].name
         );
         assert_eq!(
             "world",
-            &responses[0].compose_details.custom_headers[1].value
+            responses[0].compose_details.custom_headers[1].value
         );
 
         let mut eml = "X-ExtEditorR: Allow-X-Headers: false, X-ExtEditorR: foo\r\nX-ExtEditorR-X-ExtEditorR-Hello: world\r\n\r\nThis is a test.\r\n".as_bytes();
@@ -1118,11 +1112,11 @@ pub mod tests {
     fn help_headers_test() {
         let mut request = get_blank_compose();
         let output = to_eml_and_assert(&request);
-        assert_contains!(&output, "X-ExtEditorR-Help");
+        assert_contains!(output, "X-ExtEditorR-Help");
 
         request.configuration.suppress_help_headers = true;
         let output = to_eml_and_assert(&request);
-        refute_contains!(&output, "X-ExtEditorR-Help");
+        refute_contains!(output, "X-ExtEditorR-Help");
     }
 
     fn to_eml_and_assert(compose: &Compose) -> String {
