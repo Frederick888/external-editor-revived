@@ -1,3 +1,36 @@
+<a name="v1.0.0"></a>
+## v1.0.0 (2023-12-01)
+
+
+#### Bug Fixes
+
+* **ext:**  Remove redundant toPlainObject() call ([c4d12037](https://github.com/Frederick888/external-editor-revived/commit/c4d120370b2f70913dc6535cc46907cd73106714))
+* **host:**
+  *  Don't use meta header if the value has commas or colons ([4adb1004](https://github.com/Frederick888/external-editor-revived/commit/4adb10042cfc71e7dbb1468231f354baffd39819))
+  *  Don't add unescaped meta headers to custom headers ([a1fe40e6](https://github.com/Frederick888/external-editor-revived/commit/a1fe40e6edb607accbfbf99f98d63e037d69df02))
+  *  Update help lines about optional values ([b1c338e7](https://github.com/Frederick888/external-editor-revived/commit/b1c338e78a7f7e470b971eae740c30b3f8ce852f))
+
+#### Features
+
+*   Support X-ExtEditorR meta header ([aa7f2355](https://github.com/Frederick888/external-editor-revived/commit/aa7f2355140e93eba9fe16351e5ed5afbf9646a6))
+*   Do not serialise empty custom headers array ([36ce2193](https://github.com/Frederick888/external-editor-revived/commit/36ce2193c951950e395a29e53d4e816206aaa83f))
+*   Configuration to always allow custom headers ([b54c6c0a](https://github.com/Frederick888/external-editor-revived/commit/b54c6c0a7383f51cce82cc9eabe1b895b1b495ed))
+* **ext:**
+  *  Add GNOME Terminal to options ([ec07521a](https://github.com/Frederick888/external-editor-revived/commit/ec07521a09582f327030eebba65ee6dbd2db25ba))
+  *  Warning when "/path/to/temp.eml" is missing ([0dc0ba5c](https://github.com/Frederick888/external-editor-revived/commit/0dc0ba5c8610a08e83a3fa142e304e77bedce5db))
+* **host:**
+  *  Delivery Status Notification alias X-ExtEditorR-DSN ([f460a44a](https://github.com/Frederick888/external-editor-revived/commit/f460a44a29e8b886211708eeb7e9d3fa2ae3d662))
+  *  List priority / delivery format options in help lines ([4c7ee830](https://github.com/Frederick888/external-editor-revived/commit/4c7ee830a01a15da81b3d02a20abe7fc0ba6d224))
+  *  Improve help header format ([93b8bf28](https://github.com/Frederick888/external-editor-revived/commit/93b8bf28081b2820334b1f3d571ddee97b16e6cc))
+  *  Support custom headers ([6c3b77a6](https://github.com/Frederick888/external-editor-revived/commit/6c3b77a6856b3d9cc82c0575b8b99ce938a4215d))
+  *  Support return receipt ([27c3c063](https://github.com/Frederick888/external-editor-revived/commit/27c3c0631210a3ec1478c0e4401b3b47503fd0a1))
+  *  Support delivery status notification ([2fe2e216](https://github.com/Frederick888/external-editor-revived/commit/2fe2e2161495a12c8e2f8e7796550c3915a0ec90))
+  *  Support delivery format ([f91e157b](https://github.com/Frederick888/external-editor-revived/commit/f91e157b57336e71a8a80557ed7c306457485a40))
+  *  Support priority ([65c694ac](https://github.com/Frederick888/external-editor-revived/commit/65c694acf945b4bdadf124b022917aa432b6f2c6))
+  *  Support attaching vCard ([457e9bbb](https://github.com/Frederick888/external-editor-revived/commit/457e9bbbb152c33075f3da2b1906c46eb823c810))
+
+
+
 <a name="v0.6.0"></a>
 ## v0.6.0 (2023-02-10)
 

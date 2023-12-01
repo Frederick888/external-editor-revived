@@ -4,7 +4,7 @@
     "short_name": "ExtEditorR",
     "description": "Edit emails in external editors such as Vim, Neovim, Emacs, etc.",
     "homepage_url": "https://github.com/Frederick888/external-editor-revived",
-    "version": "0.6.0",
+    "version": "1.0.0",
     "author": "Frederick Zhang",
     "applications": {
         "gecko": {
