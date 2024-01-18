@@ -9,7 +9,7 @@ const editors = {
   'vim': new Editor('vim', false),
   'emacs': new Editor('emacs', true),
   'kak': new Editor('kak', false),
-  'neovide': new Editor('neovide --nofork', true),
+  'neovide': new Editor('neovide --no-fork', true),
   'gvim': new Editor('gvim --nofork', true),
 }
 const homebrewDefaultDir = '/usr/local/bin/'
