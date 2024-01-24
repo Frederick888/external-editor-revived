@@ -102,7 +102,7 @@ async function composeActionListener(tab, info) {
   composeDetails.attachments = JSON.parse(JSON.stringify(attachments))
   const request = {
     configuration: {
-      version: manifest.version,
+      version,
       shell: settings.shell,
       template: settings.template,
       temporaryDirectory: settings.temporaryDirectory,
@@ -125,9 +125,12 @@ async function composeActionListener(tab, info) {
 }
 
 async function nativeMessagingPing() {
+  const settings = await browser.storage.local.get(['bypassVersionCheck'])
   await browser.storage.local.remove(['healthy'])
   const request = {
-    ping: Date.now()
+    ping: Date.now(),
+    bypassVersionCheck: !!settings.bypassVersionCheck,
+    version,
   }
   console.debug(`${manifest.short_name} sending: `, request)
   // no notifications for now. only used to show the Wiki link in options.
@@ -140,6 +143,24 @@ async function nativeMessagingListener(response) {
     await browser.storage.local.set({
       healthy: response.ping === response.pong,
     })
+    if (!response.compatible) {
+      // unfortunately we have to check the setting again on top of response.compatible.
+      // when this is released, we want users to see it ASAP, so while response.compatible already takes bypassVersionCheck into account,
+      // the extension still needs to act according to the setting even if response.compatible is missing.
+      const settings = await browser.storage.local.get(['bypassVersionCheck'])
+      if (!settings.bypassVersionCheck) {
+        let message = ''
+        if (response.hostVersion) {
+          message = `Extension version is ${version} while host version is ${response.hostVersion}.\n`
+        }
+        message += 'Click here to download the compatible messaging host. (Please restart Thunderbird manually afterwards.)'
+        createBasicNotification(
+          'download-host',
+          `${manifest.short_name} messaging host may be incompatible!`,
+          message
+        )
+      }
+    }
   } else if (response.title && response.message) {
     await createBasicNotification('', response.title, response.message)
     if (response.reset === true) {
@@ -192,6 +213,15 @@ async function nativeMessagingDisconnectListener(p) {
   await createBasicNotification('port', `${manifest.short_name} messaging host disconnected`, message)
 }
 
+async function notificationOnClickListener(notificationId) {
+  if (notificationId != 'download-host') {
+    return
+  }
+  browser.tabs.create({
+    url: 'https://github.com/Frederick888/external-editor-revived/releases',
+  })
+}
+
 function toPlainObject(o) {
   // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Chrome_incompatibilities#data_cloning_algorithm
   // Extension that rely on the toJSON() method of the JSON serialization
@@ -235,6 +265,7 @@ async function createBasicNotification(id, title, message, eventTime = 5000) {
 messenger.commands.onCommand.addListener(commandListener)
 messenger.browserAction.onClicked.addListener(browserActionListener)
 messenger.composeAction.onClicked.addListener(composeActionListener)
+browser.notifications.onClicked.addListener(notificationOnClickListener)
 port.onMessage.addListener(nativeMessagingListener)
 port.onDisconnect.addListener(nativeMessagingDisconnectListener)
 
