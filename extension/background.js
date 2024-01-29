@@ -125,11 +125,9 @@ async function composeActionListener(tab, info) {
 }
 
 async function nativeMessagingPing() {
-  const settings = await browser.storage.local.get(['bypassVersionCheck'])
   await browser.storage.local.remove(['healthy'])
   const request = {
     ping: Date.now(),
-    bypassVersionCheck: !!settings.bypassVersionCheck,
     version,
   }
   console.debug(`${manifest.short_name} sending: `, request)
@@ -143,23 +141,18 @@ async function nativeMessagingListener(response) {
     await browser.storage.local.set({
       healthy: response.ping === response.pong,
     })
-    if (!response.compatible) {
-      // unfortunately we have to check the setting again on top of response.compatible.
-      // when this is released, we want users to see it ASAP, so while response.compatible already takes bypassVersionCheck into account,
-      // the extension still needs to act according to the setting even if response.compatible is missing.
-      const settings = await browser.storage.local.get(['bypassVersionCheck'])
-      if (!settings.bypassVersionCheck) {
-        let message = ''
-        if (response.hostVersion) {
-          message = `Extension version is ${version} while host version is ${response.hostVersion}.\n`
-        }
-        message += 'Click here to download the compatible messaging host. (Please restart Thunderbird manually afterwards.)'
-        createBasicNotification(
-          'download-host',
-          `${manifest.short_name} messaging host may be incompatible!`,
-          message
-        )
+    const settings = await browser.storage.local.get(['bypassVersionCheck'])
+    if (!response.compatible && !settings.bypassVersionCheck) {
+      let message = ''
+      if (response.hostVersion) {
+        message = `Extension version is ${version} while host version is ${response.hostVersion}.\n`
       }
+      message += 'Click here to download the compatible messaging host. (Please restart Thunderbird manually afterwards.)'
+      createBasicNotification(
+        'download-host',
+        `${manifest.short_name} messaging host may be incompatible!`,
+        message
+      )
     }
   } else if (response.title && response.message) {
     await createBasicNotification('', response.title, response.message)

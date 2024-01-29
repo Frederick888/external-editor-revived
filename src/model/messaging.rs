@@ -58,20 +58,12 @@ pub struct Ping {
     pub ping: u64,
     #[serde(default)]
     pub pong: u64,
-    // don't run this check as part of ping-pong if the extension is somehow older which does not
-    // send this attribute
-    #[serde(default = "default_as_true")]
-    pub bypass_version_check: bool,
     #[serde(default)]
     pub version: String,
     #[serde(default)]
     pub host_version: String,
     #[serde(default)]
     pub compatible: bool,
-}
-
-fn default_as_true() -> bool {
-    true
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -1226,13 +1218,6 @@ pub mod tests {
         request.configuration.suppress_help_headers = true;
         let output = to_eml_and_assert(&request);
         refute_contains!(output, "X-ExtEditorR-Help");
-    }
-
-    #[test]
-    fn default_ping_bypass_version_check_test() {
-        let ping_json = r#"{"ping": 123456}"#;
-        let ping: Ping = serde_json::from_str(ping_json).unwrap();
-        assert!(ping.bypass_version_check);
     }
 
     fn to_eml_and_assert(compose: &Compose) -> String {

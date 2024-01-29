@@ -22,8 +22,7 @@ where
 {
     request.pong = request.ping;
     request.host_version = env!("CARGO_PKG_VERSION").to_string();
-    request.compatible = request.bypass_version_check
-        || util::is_extension_compatible(env!("CARGO_PKG_VERSION"), &request.version);
+    request.compatible = util::is_extension_compatible(env!("CARGO_PKG_VERSION"), &request.version);
     if let Err(write_error) = T::write_message(&request) {
         eprintln!("ExtEditorR failed to send response to Thunderbird: {write_error}");
     }
@@ -235,7 +234,12 @@ mod tests {
         let _guard = WRITE_MESSAGE_CONTEXT_LOCK.lock().unwrap();
         let ctx = MockTr::write_message_context();
         ctx.expect::<Ping>()
-            .withf(|p: &Ping| p.ping == 123456 && p.pong == 123456 && p.compatible)
+            .withf(|p: &Ping| {
+                p.ping == 123456
+                    && p.pong == 123456
+                    && !p.compatible
+                    && p.host_version == env!("CARGO_PKG_VERSION")
+            })
             .returning(|&_| Ok(()));
         handle_ping::<MockTr>(ping);
         ctx.checkpoint();
@@ -244,10 +248,7 @@ mod tests {
     #[test]
     fn ping_pong_successful_version_check_test() {
         let host_version = env!("CARGO_PKG_VERSION");
-        let ping_json = format!(
-            r#"{{"ping": 123456, "bypassVersionCheck": false, "version": "{}"}}"#,
-            host_version
-        );
+        let ping_json = format!(r#"{{"ping": 123456, "version": "{}"}}"#, host_version);
         let ping: Ping = serde_json::from_str(&ping_json).unwrap();
 
         let _guard = WRITE_MESSAGE_CONTEXT_LOCK.lock().unwrap();
@@ -268,7 +269,7 @@ mod tests {
     #[test]
     fn ping_pong_failed_version_check_test() {
         let host_version = env!("CARGO_PKG_VERSION");
-        let ping_json = r#"{"ping": 123456, "bypassVersionCheck": false, "version": "0.0.0.0"}"#;
+        let ping_json = r#"{"ping": 123456, "version": "0.0.0.0"}"#;
         let ping: Ping = serde_json::from_str(ping_json).unwrap();
 
         let _guard = WRITE_MESSAGE_CONTEXT_LOCK.lock().unwrap();
@@ -279,27 +280,6 @@ mod tests {
                 p.ping == 123456
                     && p.pong == 123456
                     && !p.compatible
-                    && p.host_version == host_version
-            })
-            .returning(|&_| Ok(()));
-        handle_ping::<MockTr>(ping);
-        ctx.checkpoint();
-    }
-
-    #[test]
-    fn ping_pong_bypass_failed_version_check_test() {
-        let host_version = env!("CARGO_PKG_VERSION");
-        let ping_json = r#"{"ping": 123456, "bypassVersionCheck": true, "version": "0.0.0.0"}"#;
-        let ping: Ping = serde_json::from_str(ping_json).unwrap();
-
-        let _guard = WRITE_MESSAGE_CONTEXT_LOCK.lock().unwrap();
-        let ctx = MockTr::write_message_context();
-        ctx.expect::<Ping>()
-            .withf(|p: &Ping| {
-                let host_version = host_version.to_string();
-                p.ping == 123456
-                    && p.pong == 123456
-                    && p.compatible
                     && p.host_version == host_version
             })
             .returning(|&_| Ok(()));
