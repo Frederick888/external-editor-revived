@@ -1,3 +1,17 @@
+<a name="v1.1.0"></a>
+## v1.1.0 (2024-01-29)
+
+
+#### Features
+
+*   Notification to prompt users to download hosts ([da42d616](https://github.com/Frederick888/external-editor-revived/commit/da42d61653ac87d478e0a8706c66b697ed7416cd))
+
+#### Bug Fixes
+
+* **ext:**  Update default Neovide argument to --no-fork ([4805a1d1](https://github.com/Frederick888/external-editor-revived/commit/4805a1d1e0ada1a581583be6bdd0af9e6a974107))
+
+
+
 <a name="v1.0.0"></a>
 ## v1.0.0 (2023-12-01)
 

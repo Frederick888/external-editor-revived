@@ -49,7 +49,7 @@ checksum = "1435fa1053d8b2fbbe9be7e97eca7f33d37b28409959813daefc1446a14247f1"
 
 [[package]]
 name = "external-editor-revived"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "base64",
