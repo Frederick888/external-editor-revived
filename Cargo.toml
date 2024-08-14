@@ -14,5 +14,5 @@ webextension-native-messaging = "1.0.1"
 
 [dev-dependencies]
 base64 = "0.22.1"
-mockall = "0.12.1"
+mockall = "0.13.0"
 regex = "1.10.2"
