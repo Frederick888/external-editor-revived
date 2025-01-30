@@ -7,6 +7,7 @@ class Editor {
 const editors = {
   'nvim': new Editor('nvim', false),
   'vim': new Editor('vim', false),
+  'emacsclient': new Editor('emacsclient --alternate-editor= --reuse-frame', true),
   'emacs': new Editor('emacs', true),
   'kak': new Editor('kak', false),
   'neovide': new Editor('neovide --no-fork', true),
