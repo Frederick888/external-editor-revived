@@ -190,7 +190,7 @@ impl TrackedOptionBool {
 
 struct TrackedOptionBoolVisitor;
 
-impl<'de> Visitor<'de> for TrackedOptionBoolVisitor {
+impl Visitor<'_> for TrackedOptionBoolVisitor {
     type Value = TrackedOptionBool;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
