@@ -70,4 +70,8 @@ coverage:
         open ./target/debug/coverage/index.html; \
     fi
 
+pack_ext:
+    rm -f ./external-editor-revived.xpi
+    pushd ./extension && zip -r -FS ../external-editor-revived.xpi *
+
 # vim: set filetype=just :
