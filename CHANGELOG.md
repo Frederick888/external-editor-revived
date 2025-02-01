@@ -1,3 +1,13 @@
+<a name="v1.2.0"></a>
+## v1.2.0  (2025-02-01)
+
+
+#### Features
+
+* **ext:**  Add emacsclient as an editor option (#158) ([e32a4723](https://github.com/Frederick888/external-editor-revived/commit/e32a47232cd4e77ac77193443da49425134af487))
+
+
+
 <a name="v1.1.0"></a>
 ## v1.1.0 (2024-01-29)
 
