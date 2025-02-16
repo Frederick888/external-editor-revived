@@ -1,2 +1,4 @@
 /target
 /*.xpi
+/extension/node_modules
+/extension/yarn.lock
