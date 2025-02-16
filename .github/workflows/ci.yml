@@ -31,6 +31,22 @@ jobs:
           path: |
             external-editor-revived.xpi
 
+  format_extension:
+    name: Format MailExtension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - name: Format
+        shell: bash
+        run: |
+          pushd ./extension
+          yarn install
+          find . -type f -name '*.js' ! -path './node_modules/*' -exec yarn run tsfmt -r '{}' \+
+          find . -type f -name '*.html' ! -path './node_modules/*' -exec yarn run js-beautify --replace '{}' \+
+          find . -type f -name '*.html' ! -path './node_modules/*' -exec sh -c "printf '\n' | tee -a '{}'" \;
+          git diff --exit-code
+
   messaging_host:
     name: Build, lint, and test messaging host
     runs-on: ${{ matrix.os }}
