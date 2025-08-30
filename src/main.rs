@@ -206,8 +206,7 @@ fn main() -> anyhow::Result<()> {
 
     type Tr = transport::ThunderbirdTransport;
     loop {
-        let request = Tr::read_message::<Exchange>()
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+        let request = Tr::read_message::<Exchange>().map_err(io::Error::other)?;
 
         thread::spawn(move || match request {
             Exchange::Ping(ping) => handle_ping::<Tr>(ping),
